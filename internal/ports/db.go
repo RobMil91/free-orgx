@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/RobMil91/free-orgx/internal/models"
 )
 
 var (
@@ -26,4 +28,9 @@ type UserRepo interface {
 	// on error UserNotFound means no such user in the db GetUserToken(ctx context.Context, name, password string) (string, error)
 	GetUserToken(ctx context.Context, name, password string) (*SessionCookie, error)
 	IsValid(ctx context.Context, c string) (*User, error)
+}
+
+type ProjectRepo interface {
+	CreateProject(ctx context.Context, name string) (models.Project, error)
+	DeleteProject(ctx context.Context, id string) error
 }
