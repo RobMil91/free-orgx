@@ -28,6 +28,12 @@ type UserRepo interface {
 	// on error UserNotFound means no such user in the db GetUserToken(ctx context.Context, name, password string) (string, error)
 	GetUserToken(ctx context.Context, name, password string) (*SessionCookie, error)
 	IsValid(ctx context.Context, c string) (*User, error)
+	Create(ctx context.Context, name, password string) error
+
+	//Use Cookie to authorize for delete etc action
+	Delete(ctx context.Context, name string) error
+	ChangePassword(ctx context.Context, name, newPassword string) error
+	Logout(ctx context.Context, name string) error
 }
 
 type ProjectRepo interface {

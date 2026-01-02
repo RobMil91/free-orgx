@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/RobMil91/free-orgx/config"
-	"github.com/RobMil91/free-orgx/internal/adapters/mocks"
 	"github.com/RobMil91/free-orgx/internal/ports"
+	"github.com/RobMil91/free-orgx/internal/setup"
 )
 
 const (
@@ -78,13 +78,23 @@ func main() {
 	cfg := config.Config{}
 
 	port := flag.String("port", "8080", "Port to listen on")
+	decsionDB := flag.Bool("ram", false, "Decide wether to use a ram db or std db")
+
 	flag.Parse()
 	if port != nil {
 		cfg.Port = *port
 	}
 
-	setup.
-		level := slog.LevelInfo
+	if decsionDB != nil {
+		cfg.RAMDB = true
+	}
+
+	adapters, err := setup.Setup(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	level := slog.LevelInfo
 	if os.Getenv("LOG_LEVEL") == "debug" {
 		level = slog.LevelDebug
 	}
@@ -93,18 +103,9 @@ func main() {
 		Level: level,
 	}))
 
-	ramDB := mocks.RAM{
-		Users: map[string]ports.User{
-			"tom": {
-				Name:     "tom",
-				Password: "test",
-			},
-		},
-	}
-
-	http.HandleFunc("/project", projectHandler(logger, &ramDB))
+	http.HandleFunc("/project", projectHandler(logger, adapters.UserRep))
 	http.HandleFunc("/login", loginHandler(logger))
-	http.HandleFunc("/submit", loginSubmit(logger, &ramDB))
+	http.HandleFunc("/submit", loginSubmit(logger, adapters.UserRep))
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
 	portStr := fmt.Sprintf(":%s", cfg.Port)

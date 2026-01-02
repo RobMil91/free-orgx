@@ -16,6 +16,26 @@ type SQLiteAdapter struct {
 	Conn *sql.DB
 }
 
+// ChangePassword implements [ports.UserRepo].
+func (s *SQLiteAdapter) ChangePassword(ctx context.Context, name string, newPassword string) error {
+	panic("unimplemented")
+}
+
+// Create implements [ports.UserRepo].
+func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string) error {
+	panic("unimplemented")
+}
+
+// Delete implements [ports.UserRepo].
+func (s *SQLiteAdapter) Delete(ctx context.Context, name string) error {
+	panic("unimplemented")
+}
+
+// Logout implements [ports.UserRepo].
+func (s *SQLiteAdapter) Logout(ctx context.Context, name string) error {
+	panic("unimplemented")
+}
+
 // GetUserToken implements [ports.UserRepo].
 func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password string) (*ports.SessionCookie, error) {
 	panic("unimplemented")
@@ -45,4 +65,8 @@ func NewSQLite() (*SQLiteAdapter, error) {
 	return &SQLiteAdapter{
 		Conn: db,
 	}, nil
+}
+
+func (s SQLiteAdapter) CreateUserTable() error {
+	panic("ni")
 }

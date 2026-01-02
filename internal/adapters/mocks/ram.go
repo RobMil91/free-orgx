@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 )
 
 var _ ports.UserRepo = (*RAM)(nil)
+var _ ports.ProjectRepo = (*RAM)(nil)
 
 const (
 	// CookieLiveTime = time.Minute * 10
@@ -20,6 +22,36 @@ const (
 
 type RAM struct {
 	Users map[string]ports.User
+}
+
+// ChangePassword implements [ports.UserRepo].
+func (r *RAM) ChangePassword(ctx context.Context, name string, newPassword string) error {
+	panic("unimplemented")
+}
+
+// Create implements [ports.UserRepo].
+func (r *RAM) Create(ctx context.Context, name string, password string) error {
+	panic("unimplemented")
+}
+
+// Delete implements [ports.UserRepo].
+func (r *RAM) Delete(ctx context.Context, name string) error {
+	panic("unimplemented")
+}
+
+// Logout implements [ports.UserRepo].
+func (r *RAM) Logout(ctx context.Context, name string) error {
+	panic("unimplemented")
+}
+
+// CreateProject implements [ports.ProjectRepo].
+func (r *RAM) CreateProject(ctx context.Context, name string) (models.Project, error) {
+	panic("unimplemented")
+}
+
+// DeleteProject implements [ports.ProjectRepo].
+func (r *RAM) DeleteProject(ctx context.Context, id string) error {
+	panic("unimplemented")
 }
 
 func (r *RAM) GetUserToken(ctx context.Context, name, password string) (*ports.SessionCookie, error) {
