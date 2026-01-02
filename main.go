@@ -75,15 +75,16 @@ func loginSubmit(
 }
 
 func main() {
-	c := config.Config{}
+	cfg := config.Config{}
 
 	port := flag.String("port", "8080", "Port to listen on")
 	flag.Parse()
 	if port != nil {
-		c.Port = *port
+		cfg.Port = *port
 	}
 
-	level := slog.LevelInfo
+	setup.
+		level := slog.LevelInfo
 	if os.Getenv("LOG_LEVEL") == "debug" {
 		level = slog.LevelDebug
 	}
@@ -106,7 +107,7 @@ func main() {
 	http.HandleFunc("/submit", loginSubmit(logger, &ramDB))
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
-	portStr := fmt.Sprintf(":%s", c.Port)
+	portStr := fmt.Sprintf(":%s", cfg.Port)
 	logger.Info("started free orgx on port" + portStr)
 	log.Fatal(http.ListenAndServe(portStr, nil))
 }
