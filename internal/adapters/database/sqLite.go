@@ -22,19 +22,24 @@ func NewSQLite() (*SQLiteAdapter, error) {
 		return nil, err
 	}
 
-	return &SQLiteAdapter{
+	adapter := &SQLiteAdapter{
 		Conn: db,
-	}, nil
+	}
+	err = adapter.CreateTables()
+	if err != nil {
+		return nil, err
+	}
+
+	return adapter, nil
 }
 
-func (s SQLiteAdapter) CreateUserTable() error {
-
+func (s *SQLiteAdapter) CreateTables() error {
 	createTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username TEXT NOT NULL UNIQUE,
-		email TEXT NOT NULL UNIQUE,
 		password_hash TEXT NOT NULL,
+		token TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
