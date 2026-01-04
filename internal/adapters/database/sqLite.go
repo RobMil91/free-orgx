@@ -16,6 +16,36 @@ type SQLiteAdapter struct {
 	Conn *sql.DB
 }
 
+func NewSQLite() (*SQLiteAdapter, error) {
+	db, err := sql.Open("sqlite3", "orgxdb.db")
+	if err != nil {
+		return nil, err
+	}
+
+	return &SQLiteAdapter{
+		Conn: db,
+	}, nil
+}
+
+func (s SQLiteAdapter) CreateUserTable() error {
+
+	createTable := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT NOT NULL UNIQUE,
+		email TEXT NOT NULL UNIQUE,
+		password_hash TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	_, err := s.Conn.Exec(createTable)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ChangePassword implements [ports.UserRepo].
 func (s *SQLiteAdapter) ChangePassword(ctx context.Context, name string, newPassword string) error {
 	panic("unimplemented")
@@ -54,19 +84,4 @@ func (s *SQLiteAdapter) CreateProject(ctx context.Context, name string) (models.
 // DeleteProject implements [ports.ProjectRepo].
 func (s *SQLiteAdapter) DeleteProject(ctx context.Context, id string) error {
 	panic("unimplemented")
-}
-
-func NewSQLite() (*SQLiteAdapter, error) {
-	db, err := sql.Open("sqlite3", "orgxdb.db")
-	if err != nil {
-		return nil, err
-	}
-
-	return &SQLiteAdapter{
-		Conn: db,
-	}, nil
-}
-
-func (s SQLiteAdapter) CreateUserTable() error {
-	panic("ni")
 }

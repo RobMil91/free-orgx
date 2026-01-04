@@ -86,7 +86,7 @@ func main() {
 	}
 
 	if decsionDB != nil {
-		cfg.RAMDB = true
+		cfg.RAMDB = *decsionDB
 	}
 
 	adapters, err := setup.Setup(cfg)

@@ -33,7 +33,7 @@ func Setup(cfg config.Config) (*Adapters, error) {
 		users = &ramDB
 		projects = &ramDB
 
-		slog.Debug("started ram db")
+		slog.Info("started ram db")
 	} else {
 		db, err := database.NewSQLite()
 		if err != nil {
@@ -42,7 +42,7 @@ func Setup(cfg config.Config) (*Adapters, error) {
 
 		users = db
 		projects = db
-		slog.Debug("started sqlite db")
+		slog.Info("started sqlite db")
 	}
 
 	return &Adapters{

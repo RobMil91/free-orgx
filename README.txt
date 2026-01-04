@@ -8,3 +8,6 @@ async go backend
 
 change port
 go run main.go -port 1234
+
+
+export LOG_LEVEL=DEBUG
