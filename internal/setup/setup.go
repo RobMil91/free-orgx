@@ -40,6 +40,11 @@ func Setup(cfg config.Config) (*Adapters, error) {
 			return nil, err
 		}
 
+		err = db.CreateUserTable()
+		if err != nil {
+			return nil, err
+		}
+
 		users = db
 		projects = db
 		slog.Info("started sqlite db")
