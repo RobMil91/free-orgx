@@ -2,11 +2,17 @@ package database
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
+	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var _ ports.UserRepo = (*SQLiteAdapter)(nil)
@@ -40,6 +46,7 @@ func (s *SQLiteAdapter) CreateTables() error {
 		username TEXT NOT NULL UNIQUE,
 		password_hash TEXT NOT NULL,
 		token TEXT,
+		salt TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
@@ -58,7 +65,46 @@ func (s *SQLiteAdapter) ChangePassword(ctx context.Context, name string, newPass
 
 // Create implements [ports.UserRepo].
 func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string) error {
-	panic("unimplemented")
+	pepper := os.Getenv("PASSWORD_PEPPER")
+	if pepper == "" {
+		slog.Error(fmt.Errorf("could not create new user %s, because their is no pepper set it env", name).Error())
+		return ports.CreateError
+	}
+
+	salt := make([]byte, 16)
+	_, err := rand.Read(salt)
+	if err != nil {
+		slog.Error(fmt.Errorf("create user %s failed to generate random salt, [%w]", name, err).Error())
+		return ports.CreateError
+	}
+	saltStr := base64.RawStdEncoding.EncodeToString(salt)
+
+	combined := password + saltStr + pepper
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(combined), bcrypt.DefaultCost)
+	if err != nil {
+		slog.Error(fmt.Errorf("could not create user %s because of hash fail %w", name, err).Error())
+		return ports.CreateError
+	}
+
+	stmt, err := s.Conn.Prepare(`
+    INSERT INTO users (username, password_hash, token, salt)
+    VALUES (?, ?, ?, ?)
+`)
+	if err != nil {
+		slog.Error(err.Error())
+		return ports.CreateError
+	}
+
+	defer stmt.Close()
+
+	_, err = stmt.Exec(name, hash, "", saltStr)
+	if err != nil {
+		slog.Error(err.Error())
+		return ports.CreateError
+	}
+
+	return nil
 }
 
 // Delete implements [ports.UserRepo].

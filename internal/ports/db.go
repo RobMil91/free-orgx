@@ -40,3 +40,5 @@ type ProjectRepo interface {
 	CreateProject(ctx context.Context, name string) (models.Project, error)
 	DeleteProject(ctx context.Context, id string) error
 }
+
+var CreateError = errors.New("vailed to create user")
