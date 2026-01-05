@@ -41,4 +41,4 @@ type ProjectRepo interface {
 	DeleteProject(ctx context.Context, id string) error
 }
 
-var CreateError = errors.New("vailed to create user")
+var DatabaseError = errors.New("database adapter failed to execute action")

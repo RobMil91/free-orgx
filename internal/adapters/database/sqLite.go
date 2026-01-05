@@ -46,7 +46,8 @@ func (s *SQLiteAdapter) CreateTables() error {
 		username TEXT NOT NULL UNIQUE,
 		password_hash TEXT NOT NULL,
 		token TEXT,
-		salt TEXT,
+		salt TEXT NOT NULL,
+		role TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
@@ -68,14 +69,14 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 	pepper := os.Getenv("PASSWORD_PEPPER")
 	if pepper == "" {
 		slog.Error(fmt.Errorf("could not create new user %s, because their is no pepper set it env", name).Error())
-		return ports.CreateError
+		return ports.DatabaseError
 	}
 
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
 		slog.Error(fmt.Errorf("create user %s failed to generate random salt, [%w]", name, err).Error())
-		return ports.CreateError
+		return ports.DatabaseError
 	}
 	saltStr := base64.RawStdEncoding.EncodeToString(salt)
 
@@ -84,7 +85,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 	hash, err := bcrypt.GenerateFromPassword([]byte(combined), bcrypt.DefaultCost)
 	if err != nil {
 		slog.Error(fmt.Errorf("could not create user %s because of hash fail %w", name, err).Error())
-		return ports.CreateError
+		return ports.DatabaseError
 	}
 
 	stmt, err := s.Conn.Prepare(`
@@ -93,7 +94,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 `)
 	if err != nil {
 		slog.Error(err.Error())
-		return ports.CreateError
+		return ports.DatabaseError
 	}
 
 	defer stmt.Close()
@@ -101,7 +102,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 	_, err = stmt.Exec(name, hash, "", saltStr)
 	if err != nil {
 		slog.Error(err.Error())
-		return ports.CreateError
+		return ports.DatabaseError
 	}
 
 	return nil
@@ -109,7 +110,13 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 
 // Delete implements [ports.UserRepo].
 func (s *SQLiteAdapter) Delete(ctx context.Context, name string) error {
-	panic("unimplemented")
+	_, err := s.Conn.Exec(`DELETE FROM users WHERE username = ?`, name)
+	if err != nil {
+		slog.Error("fmt.Sprintf(delete failed for %s, because of %s", name, err.Error())
+		return ports.DatabaseError
+	}
+
+	return nil
 }
 
 // Logout implements [ports.UserRepo].
