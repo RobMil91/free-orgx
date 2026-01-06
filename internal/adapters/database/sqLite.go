@@ -22,6 +22,29 @@ type SQLiteAdapter struct {
 	Conn *sql.DB
 }
 
+// GetAll implements [ports.UserRepo].
+func (s *SQLiteAdapter) GetAll(ctx context.Context) ([]ports.User, error) {
+	rows, err := s.Conn.Query(`SELECT id, username, role FROM users;`)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var users []ports.User
+
+	for rows.Next() {
+		var u ports.User
+		if err := rows.Scan(&u.ID, &u.Name, &u.Role); err != nil {
+			return nil, err
+		}
+
+		users = append(users, u)
+	}
+
+	return users, nil
+}
+
 func NewSQLite() (*SQLiteAdapter, error) {
 	db, err := sql.Open("sqlite3", "orgxdb.db")
 	if err != nil {
@@ -46,7 +69,6 @@ func (s *SQLiteAdapter) CreateTables() error {
 		username TEXT NOT NULL UNIQUE,
 		password_hash TEXT NOT NULL,
 		token TEXT,
-		salt TEXT NOT NULL,
 		role TEXT NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`

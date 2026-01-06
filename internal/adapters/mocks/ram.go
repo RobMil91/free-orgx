@@ -24,6 +24,11 @@ type RAM struct {
 	Users map[string]ports.User
 }
 
+// GetAll implements [ports.UserRepo].
+func (r *RAM) GetAll(ctx context.Context) ([]ports.User, error) {
+	panic("unimplemented")
+}
+
 // ChangePassword implements [ports.UserRepo].
 func (r *RAM) ChangePassword(ctx context.Context, name string, newPassword string) error {
 	panic("unimplemented")

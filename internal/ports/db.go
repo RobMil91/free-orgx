@@ -13,7 +13,9 @@ var (
 )
 
 type User struct {
+	ID       int
 	Name     string
+	Role     string
 	Password string
 	Cookie   SessionCookie
 }
@@ -32,6 +34,7 @@ type UserRepo interface {
 
 	//Use Cookie to authorize for delete etc action
 	Delete(ctx context.Context, name string) error
+	GetAll(ctx context.Context) ([]User, error)
 	ChangePassword(ctx context.Context, name, newPassword string) error
 	Logout(ctx context.Context, name string) error
 }
