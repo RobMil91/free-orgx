@@ -94,15 +94,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 		return ports.DatabaseError
 	}
 
-	salt := make([]byte, 16)
-	_, err := rand.Read(salt)
-	if err != nil {
-		slog.Error(fmt.Errorf("create user %s failed to generate random salt, [%w]", name, err).Error())
-		return ports.DatabaseError
-	}
-	saltStr := base64.RawStdEncoding.EncodeToString(salt)
-
-	combined := password + saltStr + pepper
+	combined := password + pepper
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(combined), bcrypt.DefaultCost)
 	if err != nil {
