@@ -2,9 +2,7 @@ package database
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"os"
@@ -113,7 +111,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 
 	defer stmt.Close()
 
-	_, err = stmt.Exec(name, hash, "", saltStr)
+	_, err = stmt.Exec(name, hash, "")
 	if err != nil {
 		slog.Error(err.Error())
 		return ports.DatabaseError
@@ -140,7 +138,14 @@ func (s *SQLiteAdapter) Logout(ctx context.Context, name string) error {
 
 // GetUserToken implements [ports.UserRepo].
 func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password string) (*ports.SessionCookie, error) {
-	panic("unimplemented")
+	var (
+		passwordHash string
+	)
+	query := `SELECT password_hash FROM users WHERE username = ?`
+	if err := s.Conn.QueryRow(query, name).Scan(&passwordHash); err != nil {
+		return nil, fmt.Errorf("can not get user with name %s, [%w]", name, err)
+	}
+
 }
 
 // IsValid implements [ports.UserRepo].
