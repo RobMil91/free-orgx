@@ -135,7 +135,21 @@ func (s *SQLiteAdapter) ChangePassword(ctx context.Context, name string, newPass
 }
 
 // Create implements [ports.UserRepo].
-func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string) error {
+func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string, role string) error {
+	if role != ports.RoleAdmin && role != ports.RoleUser {
+		return ports.InvalidRole
+	}
+
+	if role == ports.RoleAdmin {
+		count, err := s.CountAdmins(ctx)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return ports.AdminExists
+		}
+	}
+
 	pepper := os.Getenv("PASSWORD_PEPPER")
 	if pepper == "" {
 		slog.Error(fmt.Errorf("could not create new user %s, because their is no pepper set it env", name).Error())
@@ -161,13 +175,36 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 
 	defer stmt.Close()
 
-	_, err = stmt.Exec(name, hash, "", "user")
+	_, err = stmt.Exec(name, hash, "", role)
 	if err != nil {
 		slog.Error(err.Error())
 		return ports.DatabaseError
 	}
 
 	return nil
+}
+
+// GetAdmin implements [ports.UserRepo].
+func (s *SQLiteAdapter) GetAdmin(ctx context.Context) (*ports.User, error) {
+	var user ports.User
+	err := s.Conn.QueryRow(`SELECT id, username, role FROM users WHERE role = ?`, ports.RoleAdmin).Scan(&user.ID, &user.Name, &user.Role)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ports.UserNotFound
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+// CountAdmins implements [ports.UserRepo].
+func (s *SQLiteAdapter) CountAdmins(ctx context.Context) (int, error) {
+	var count int
+	err := s.Conn.QueryRow(`SELECT COUNT(*) FROM users WHERE role = ?`, ports.RoleAdmin).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // Delete implements [ports.UserRepo].
@@ -192,7 +229,7 @@ func (s *SQLiteAdapter) Logout(ctx context.Context, name string) error {
 }
 
 // GetUserToken implements [ports.UserRepo].
-func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password string) (*ports.SessionCookie, error) {
+func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password string) (*ports.LoginResult, error) {
 	pepper := os.Getenv("PASSWORD_PEPPER")
 	if pepper == "" {
 		slog.Error("PASSWORD_PEPPER not set in environment")
@@ -200,9 +237,19 @@ func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password 
 	}
 
 	var passwordHash string
-	query := `SELECT password_hash FROM users WHERE username = ?`
-	if err := s.Conn.QueryRow(query, name).Scan(&passwordHash); err != nil {
+	var userID int
+	var userRole string
+	query := `SELECT id, password_hash, role FROM users WHERE username = ?`
+	err := s.Conn.QueryRow(query, name).Scan(&userID, &passwordHash, &userRole)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			userCount, countErr := s.CountUsers(ctx)
+			if countErr != nil {
+				return nil, countErr
+			}
+			if userCount == 0 {
+				return s.registerFirstAdmin(ctx, name, password, pepper)
+			}
 			return nil, fmt.Errorf("%w", ports.UserNotFound)
 		}
 		return nil, fmt.Errorf("can not get user with name %s, [%w]", name, err)
@@ -225,10 +272,69 @@ func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password 
 		return nil, ports.DatabaseError
 	}
 
-	return &ports.SessionCookie{
-		Value:      *token,
-		CreateTime: time.Now(),
+	return &ports.LoginResult{
+		Cookie: &ports.SessionCookie{
+			Value:      *token,
+			CreateTime: time.Now(),
+		},
+		User: &ports.User{
+			ID:   userID,
+			Name: name,
+			Role: userRole,
+		},
+		IsNewUser: false,
 	}, nil
+}
+
+func (s *SQLiteAdapter) registerFirstAdmin(ctx context.Context, name, password, pepper string) (*ports.LoginResult, error) {
+	combined := password + pepper
+	hash, err := bcrypt.GenerateFromPassword([]byte(combined), bcrypt.DefaultCost)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not hash password for first admin %s: %v", name, err))
+		return nil, ports.DatabaseError
+	}
+
+	token, err := createRandStr(32)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not create token for first admin %s: %v", name, err))
+		return nil, ports.DatabaseError
+	}
+
+	result, err := s.Conn.Exec(
+		`INSERT INTO users (username, password_hash, token, role) VALUES (?, ?, ?, ?)`,
+		name, hash, *token, ports.RoleAdmin,
+	)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not create first admin %s: %v", name, err))
+		return nil, ports.DatabaseError
+	}
+
+	id, _ := result.LastInsertId()
+
+	slog.Info(fmt.Sprintf("first admin registered: %s", name))
+
+	return &ports.LoginResult{
+		Cookie: &ports.SessionCookie{
+			Value:      *token,
+			CreateTime: time.Now(),
+		},
+		User: &ports.User{
+			ID:   int(id),
+			Name: name,
+			Role: ports.RoleAdmin,
+		},
+		IsNewUser: true,
+	}, nil
+}
+
+// CountUsers implements [ports.UserRepo].
+func (s *SQLiteAdapter) CountUsers(ctx context.Context) (int, error) {
+	var count int
+	err := s.Conn.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // IsValid implements [ports.UserRepo].

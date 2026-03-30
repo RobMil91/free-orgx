@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -30,7 +31,7 @@ func TestSQLite_Create(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	err := db.Create(ctx, "testuser", "password123")
+	err := db.Create(ctx, "testuser", "password123", ports.RoleUser)
 	if err != nil {
 		t.Fatalf("Create() failed: %v", err)
 	}
@@ -53,9 +54,9 @@ func TestSQLite_Create_DuplicateUser(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
-	err := db.Create(ctx, "testuser", "password456")
+	err := db.Create(ctx, "testuser", "password456", ports.RoleUser)
 	if err == nil {
 		t.Error("Create() should fail for duplicate user")
 	}
@@ -66,7 +67,7 @@ func TestSQLite_GetUserToken(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
 	token, err := db.GetUserToken(ctx, "testuser", "password123")
 	if err != nil {
@@ -76,7 +77,7 @@ func TestSQLite_GetUserToken(t *testing.T) {
 	if token == nil {
 		t.Fatal("GetUserToken() returned nil token")
 	}
-	if token.Value == "" {
+	if token.Cookie.Value == "" {
 		t.Error("GetUserToken() returned empty token value")
 	}
 }
@@ -86,7 +87,7 @@ func TestSQLite_GetUserToken_WrongPassword(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
 	_, err := db.GetUserToken(ctx, "testuser", "wrongpassword")
 	if err == nil {
@@ -99,9 +100,14 @@ func TestSQLite_GetUserToken_UserNotFound(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
+	db.Create(ctx, "existinguser", "password", ports.RoleUser)
+
 	_, err := db.GetUserToken(ctx, "nonexistent", "password")
 	if err == nil {
-		t.Error("GetUserToken() should fail for nonexistent user")
+		t.Error("GetUserToken() should fail for nonexistent user when users exist")
+	}
+	if !errors.Is(err, ports.UserNotFound) {
+		t.Errorf("expected UserNotFound error, got: %v", err)
 	}
 }
 
@@ -110,11 +116,11 @@ func TestSQLite_IsValid(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
 	token, _ := db.GetUserToken(ctx, "testuser", "password123")
 
-	user, err := db.IsValid(ctx, token.Value)
+	user, err := db.IsValid(ctx, token.Cookie.Value)
 	if err != nil {
 		t.Fatalf("IsValid() failed: %v", err)
 	}
@@ -143,7 +149,7 @@ func TestSQLite_ChangePassword(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
 	err := db.ChangePassword(ctx, "testuser", "newpassword456")
 	if err != nil {
@@ -180,7 +186,7 @@ func TestSQLite_Logout(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
 	token, _ := db.GetUserToken(ctx, "testuser", "password123")
 
@@ -189,7 +195,7 @@ func TestSQLite_Logout(t *testing.T) {
 		t.Fatalf("Logout() failed: %v", err)
 	}
 
-	_, err = db.IsValid(ctx, token.Value)
+	_, err = db.IsValid(ctx, token.Cookie.Value)
 	if err == nil {
 		t.Error("token should be invalid after logout")
 	}
@@ -200,7 +206,7 @@ func TestSQLite_Delete(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password123")
+	db.Create(ctx, "testuser", "password123", ports.RoleUser)
 
 	err := db.Delete(ctx, "testuser")
 	if err != nil {
@@ -218,8 +224,8 @@ func TestSQLite_GetAll(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "user1", "password1")
-	db.Create(ctx, "user2", "password2")
+	db.Create(ctx, "user1", "password1", ports.RoleUser)
+	db.Create(ctx, "user2", "password2", ports.RoleUser)
 
 	users, err := db.GetAll(ctx)
 	if err != nil {
@@ -338,7 +344,7 @@ func TestSQLite_NoPepper(t *testing.T) {
 	}()
 
 	ctx := context.Background()
-	err = db.Create(ctx, "testuser", "password")
+	err = db.Create(ctx, "testuser", "password", ports.RoleUser)
 	if err == nil {
 		t.Error("Create() should fail when PASSWORD_PEPPER is not set")
 	}
@@ -349,6 +355,186 @@ func TestSQLite_NoPepper(t *testing.T) {
 	}
 
 	_ = db.ChangePassword(ctx, "testuser", "newpass")
+}
+
+func TestSQLite_CreateAdmin(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	err := db.Create(ctx, "admin", "password", ports.RoleAdmin)
+	if err != nil {
+		t.Fatalf("Create() admin failed: %v", err)
+	}
+
+	admin, err := db.GetAdmin(ctx)
+	if err != nil {
+		t.Fatalf("GetAdmin() failed: %v", err)
+	}
+	if admin.Name != "admin" {
+		t.Errorf("expected admin name 'admin', got '%s'", admin.Name)
+	}
+	if admin.Role != ports.RoleAdmin {
+		t.Errorf("expected role 'admin', got '%s'", admin.Role)
+	}
+}
+
+func TestSQLite_CreateSecondAdmin_Fails(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "admin1", "password", ports.RoleAdmin)
+
+	err := db.Create(ctx, "admin2", "password", ports.RoleAdmin)
+	if err == nil {
+		t.Error("Create() should fail when admin already exists")
+	}
+	if err != ports.AdminExists {
+		t.Errorf("expected AdminExists error, got: %v", err)
+	}
+}
+
+func TestSQLite_GetAdmin_NotFound(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	_, err := db.GetAdmin(ctx)
+	if err == nil {
+		t.Error("GetAdmin() should fail when no admin exists")
+	}
+}
+
+func TestSQLite_CountAdmins(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	count, err := db.CountAdmins(ctx)
+	if err != nil {
+		t.Fatalf("CountAdmins() failed: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 admins, got %d", count)
+	}
+
+	db.Create(ctx, "admin", "password", ports.RoleAdmin)
+
+	count, err = db.CountAdmins(ctx)
+	if err != nil {
+		t.Fatalf("CountAdmins() failed: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 admin, got %d", count)
+	}
+}
+
+func TestSQLite_Create_InvalidRole(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	err := db.Create(ctx, "user", "password", "invalid")
+	if err == nil {
+		t.Error("Create() should fail for invalid role")
+	}
+	if err != ports.InvalidRole {
+		t.Errorf("expected InvalidRole error, got: %v", err)
+	}
+}
+
+func TestSQLite_CreateMultipleUsers(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "admin", "password", ports.RoleAdmin)
+	db.Create(ctx, "user1", "password", ports.RoleUser)
+	db.Create(ctx, "user2", "password", ports.RoleUser)
+
+	users, err := db.GetAll(ctx)
+	if err != nil {
+		t.Fatalf("GetAll() failed: %v", err)
+	}
+	if len(users) != 3 {
+		t.Errorf("expected 3 users, got %d", len(users))
+	}
+}
+
+func TestSQLite_GetUserToken_FirstUserBecomesAdmin(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	result, err := db.GetUserToken(ctx, "firstuser", "password")
+	if err != nil {
+		t.Fatalf("GetUserToken() failed for first user: %v", err)
+	}
+
+	if !result.IsNewUser {
+		t.Error("first user should be marked as new user")
+	}
+
+	if result.User.Role != ports.RoleAdmin {
+		t.Errorf("first user should be admin, got: %s", result.User.Role)
+	}
+
+	admin, err := db.GetAdmin(ctx)
+	if err != nil {
+		t.Fatalf("GetAdmin() failed: %v", err)
+	}
+	if admin.Name != "firstuser" {
+		t.Errorf("admin should be firstuser, got: %s", admin.Name)
+	}
+}
+
+func TestSQLite_GetUserToken_SecondUserDoesNotBecomeAdmin(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	result1, _ := db.GetUserToken(ctx, "firstuser", "password")
+	if result1.User.Role != ports.RoleAdmin {
+		t.Errorf("first user should be admin, got: %s", result1.User.Role)
+	}
+
+	result2, err := db.GetUserToken(ctx, "seconduser", "password")
+	if err == nil {
+		t.Error("second user should fail to auto-register")
+	}
+	if !errors.Is(err, ports.UserNotFound) {
+		t.Errorf("expected UserNotFound error, got: %v", err)
+	}
+
+	_ = result2
+}
+
+func TestSQLite_CountUsers(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	count, err := db.CountUsers(ctx)
+	if err != nil {
+		t.Fatalf("CountUsers() failed: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 users, got %d", count)
+	}
+
+	db.Create(ctx, "user1", "password", ports.RoleUser)
+	db.Create(ctx, "user2", "password", ports.RoleUser)
+
+	count, err = db.CountUsers(ctx)
+	if err != nil {
+		t.Fatalf("CountUsers() failed: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2 users, got %d", count)
+	}
 }
 
 var _ ports.UserRepo = (*database.SQLiteAdapter)(nil)

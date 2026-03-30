@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"context"
 	"log/slog"
 
 	"github.com/RobMil91/free-orgx/config"
@@ -24,9 +23,10 @@ func Setup(cfg config.Config) (*Adapters, error) {
 	if cfg.RAMDB {
 		ramDB := mocks.RAM{
 			Users: map[string]ports.User{
-				"tom": {
-					Name:     "tom",
-					Password: "test",
+				"testadmin": {
+					Name:     "testadmin",
+					Password: "testpass",
+					Role:     ports.RoleAdmin,
 				},
 			},
 		}
@@ -43,8 +43,8 @@ func Setup(cfg config.Config) (*Adapters, error) {
 
 		users = db
 		projects = db
-		users.Create(context.TODO(), "test", "test")
-		slog.Info("started sqlite db")
+
+		slog.Info("started sqlite db (first login becomes admin)")
 	}
 
 	return &Adapters{

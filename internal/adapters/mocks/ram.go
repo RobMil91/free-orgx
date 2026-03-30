@@ -36,18 +36,52 @@ func (r *RAM) ChangePassword(ctx context.Context, name string, newPassword strin
 }
 
 // Create implements [ports.UserRepo].
-func (r *RAM) Create(ctx context.Context, name string, password string) error {
-	panic("unimplemented")
+func (r *RAM) Create(ctx context.Context, name, password, role string) error {
+	if r.Users == nil {
+		r.Users = make(map[string]ports.User)
+	}
+	r.Users[name] = ports.User{
+		Name:     name,
+		Password: password,
+		Role:     role,
+	}
+	return nil
 }
 
 // Delete implements [ports.UserRepo].
 func (r *RAM) Delete(ctx context.Context, name string) error {
-	panic("unimplemented")
+	delete(r.Users, name)
+	return nil
 }
 
 // Logout implements [ports.UserRepo].
 func (r *RAM) Logout(ctx context.Context, name string) error {
-	panic("unimplemented")
+	if u, ok := r.Users[name]; ok {
+		u.Cookie.Value = ""
+		r.Users[name] = u
+	}
+	return nil
+}
+
+// GetAdmin implements [ports.UserRepo].
+func (r *RAM) GetAdmin(ctx context.Context) (*ports.User, error) {
+	for _, u := range r.Users {
+		if u.Role == ports.RoleAdmin {
+			return &u, nil
+		}
+	}
+	return nil, ports.UserNotFound
+}
+
+// CountAdmins implements [ports.UserRepo].
+func (r *RAM) CountAdmins(ctx context.Context) (int, error) {
+	count := 0
+	for _, u := range r.Users {
+		if u.Role == ports.RoleAdmin {
+			count++
+		}
+	}
+	return count, nil
 }
 
 // CreateProject implements [ports.ProjectRepo].
@@ -83,11 +117,19 @@ func (r *RAM) DeleteProject(ctx context.Context, id string) error {
 	panic("unimplemented")
 }
 
-func (r *RAM) GetUserToken(ctx context.Context, name, password string) (*ports.SessionCookie, error) {
+func (r *RAM) GetUserToken(ctx context.Context, name, password string) (*ports.LoginResult, error) {
+	if r.Users == nil {
+		r.Users = make(map[string]ports.User)
+	}
+
 	u, ok := r.Users[name]
 
 	if !ok {
-		return nil, fmt.Errorf("%s %w", name, ports.UserNotFound)
+		count, _ := r.CountUsers(ctx)
+		if count == 0 {
+			return r.registerFirstAdmin(ctx, name, password)
+		}
+		return nil, fmt.Errorf("%w", ports.UserNotFound)
 	}
 
 	if u.Password != password {
@@ -103,7 +145,40 @@ func (r *RAM) GetUserToken(ctx context.Context, name, password string) (*ports.S
 	u.Cookie.Value = *newCookie
 	r.Users[name] = u
 
-	return &u.Cookie, nil
+	return &ports.LoginResult{
+		Cookie:    &u.Cookie,
+		User:      &u,
+		IsNewUser: false,
+	}, nil
+}
+
+func (r *RAM) registerFirstAdmin(ctx context.Context, name, password string) (*ports.LoginResult, error) {
+	newCookie, _ := CreateRandStr(32)
+	user := ports.User{
+		ID:       len(r.Users) + 1,
+		Name:     name,
+		Password: password,
+		Role:     ports.RoleAdmin,
+		Cookie: ports.SessionCookie{
+			Value:      *newCookie,
+			CreateTime: time.Now(),
+		},
+	}
+	r.Users[name] = user
+
+	return &ports.LoginResult{
+		Cookie:    &user.Cookie,
+		User:      &user,
+		IsNewUser: true,
+	}, nil
+}
+
+// CountUsers implements [ports.UserRepo].
+func (r *RAM) CountUsers(ctx context.Context) (int, error) {
+	if r.Users == nil {
+		return 0, nil
+	}
+	return len(r.Users), nil
 }
 
 // this should not be adapter logic refacotor to use in controller

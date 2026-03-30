@@ -100,7 +100,7 @@ func loginSubmit(
 		l.Debug("login submit request")
 		l.Debug(r.FormValue("user"))
 
-		token, err := db.GetUserToken(r.Context(), r.FormValue("user"), r.FormValue("password"))
+		result, err := db.GetUserToken(r.Context(), r.FormValue("user"), r.FormValue("password"))
 		if err != nil {
 			w.Write([]byte("Login failed: invalid username or password"))
 			return
@@ -108,12 +108,18 @@ func loginSubmit(
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     sessionCookieID,
-			Value:    token.Value,
+			Value:    result.Cookie.Value,
 			HttpOnly: true,
 			Path:     "/",
 		})
 
-		w.Write([]byte(token.Value))
+		if result.IsNewUser {
+			l.Info(fmt.Sprintf("first admin registered: %s", result.User.Name))
+			w.Write([]byte(fmt.Sprintf("Welcome! You are the first admin (%s).", result.User.Name)))
+			return
+		}
+
+		w.Write([]byte(result.Cookie.Value))
 	}
 }
 

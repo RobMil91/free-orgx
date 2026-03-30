@@ -16,8 +16,12 @@ type mockUserRepo struct {
 	users map[string]ports.User
 }
 
-func (m *mockUserRepo) GetUserToken(ctx context.Context, name, password string) (*ports.SessionCookie, error) {
+func (m *mockUserRepo) GetUserToken(ctx context.Context, name, password string) (*ports.LoginResult, error) {
 	return nil, nil
+}
+
+func (m *mockUserRepo) CountUsers(ctx context.Context) (int, error) {
+	return len(m.users), nil
 }
 
 func (m *mockUserRepo) IsValid(ctx context.Context, c string) (*ports.User, error) {
@@ -29,7 +33,7 @@ func (m *mockUserRepo) IsValid(ctx context.Context, c string) (*ports.User, erro
 	return nil, ports.UserNotFound
 }
 
-func (m *mockUserRepo) Create(ctx context.Context, name, password string) error {
+func (m *mockUserRepo) Create(ctx context.Context, name, password, role string) error {
 	return nil
 }
 
@@ -47,6 +51,14 @@ func (m *mockUserRepo) ChangePassword(ctx context.Context, name, newPassword str
 
 func (m *mockUserRepo) Logout(ctx context.Context, name string) error {
 	return nil
+}
+
+func (m *mockUserRepo) GetAdmin(ctx context.Context) (*ports.User, error) {
+	return nil, ports.UserNotFound
+}
+
+func (m *mockUserRepo) CountAdmins(ctx context.Context) (int, error) {
+	return 0, nil
 }
 
 type mockProjectRepo struct {
@@ -122,12 +134,12 @@ func TestCreateProject_EmptyName(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password")
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
 	token, _ := db.GetUserToken(ctx, "testuser", "password")
 
 	req, _ := http.NewRequest("POST", "/project/create", strings.NewReader("name="))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Value})
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Cookie.Value})
 	w := httptest.NewRecorder()
 
 	handler := createProjectHandlerTest(db, db)
@@ -143,12 +155,12 @@ func TestCreateProject_Success(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password")
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
 	token, _ := db.GetUserToken(ctx, "testuser", "password")
 
 	req, _ := http.NewRequest("POST", "/project/create", strings.NewReader("name=MyProject"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Value})
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Cookie.Value})
 	w := httptest.NewRecorder()
 
 	handler := createProjectHandlerTest(db, db)
@@ -164,13 +176,13 @@ func TestListProjects_Success(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "testuser", "password")
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
 	token, _ := db.GetUserToken(ctx, "testuser", "password")
 	db.CreateProject(ctx, "Project1", "testuser")
 	db.CreateProject(ctx, "Project2", "testuser")
 
 	req, _ := http.NewRequest("GET", "/project", nil)
-	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Value})
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Cookie.Value})
 	w := httptest.NewRecorder()
 
 	handler := listProjectsHandlerTest(db, db)
@@ -204,11 +216,11 @@ func TestListProjects_Empty(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	db.Create(ctx, "emptyuser", "password")
+	db.Create(ctx, "emptyuser", "password", ports.RoleUser)
 	token, _ := db.GetUserToken(ctx, "emptyuser", "password")
 
 	req, _ := http.NewRequest("GET", "/project", nil)
-	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Value})
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: token.Cookie.Value})
 	w := httptest.NewRecorder()
 
 	handler := listProjectsHandlerTest(db, db)
