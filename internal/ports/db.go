@@ -40,7 +40,8 @@ type UserRepo interface {
 }
 
 type ProjectRepo interface {
-	CreateProject(ctx context.Context, name string) (models.Project, error)
+	CreateProject(ctx context.Context, name, owner string) (models.Project, error)
+	GetProjectsByOwner(ctx context.Context, owner string) ([]models.Project, error)
 	DeleteProject(ctx context.Context, id string) error
 }
 

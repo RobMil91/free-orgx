@@ -10,16 +10,16 @@ import (
 )
 
 func setupTestDB(t *testing.T) (*database.SQLiteAdapter, func()) {
-	os.Setenv("PASSWORD_PEPPER", "test-pepper-secret")
+	os.Setenv("PASSWORD_PEPPER", "test-pepper-"+t.Name())
 
-	db, err := database.NewSQLite()
+	db, err := database.NewSQLiteForTest(t.Name())
 	if err != nil {
 		t.Fatalf("failed to create test DB: %v", err)
 	}
 
 	cleanup := func() {
 		db.Conn.Close()
-		os.Remove("orgxdb.db")
+		database.CleanupTestDB(t.Name())
 	}
 
 	return db, cleanup
@@ -251,7 +251,7 @@ func TestSQLite_CreateProject(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	project, err := db.CreateProject(ctx, "My Project")
+	project, err := db.CreateProject(ctx, "My Project", "testuser")
 	if err != nil {
 		t.Fatalf("CreateProject() failed: %v", err)
 	}
@@ -262,6 +262,43 @@ func TestSQLite_CreateProject(t *testing.T) {
 	if project.ID == "" {
 		t.Error("project ID should not be empty")
 	}
+	if project.Owner != "testuser" {
+		t.Errorf("expected owner 'testuser', got '%s'", project.Owner)
+	}
+}
+
+func TestSQLite_GetProjectsByOwner(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.CreateProject(ctx, "Project1", "testuser")
+	db.CreateProject(ctx, "Project2", "testuser")
+	db.CreateProject(ctx, "OtherProject", "otheruser")
+
+	projects, err := db.GetProjectsByOwner(ctx, "testuser")
+	if err != nil {
+		t.Fatalf("GetProjectsByOwner() failed: %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Errorf("expected 2 projects, got %d", len(projects))
+	}
+}
+
+func TestSQLite_GetProjectsByOwner_Empty(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	projects, err := db.GetProjectsByOwner(ctx, "nonexistent")
+	if err != nil {
+		t.Fatalf("GetProjectsByOwner() failed: %v", err)
+	}
+
+	if len(projects) != 0 {
+		t.Errorf("expected 0 projects, got %d", len(projects))
+	}
 }
 
 func TestSQLite_DeleteProject(t *testing.T) {
@@ -269,7 +306,7 @@ func TestSQLite_DeleteProject(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	project, _ := db.CreateProject(ctx, "My Project")
+	project, _ := db.CreateProject(ctx, "My Project", "testuser")
 
 	err := db.DeleteProject(ctx, project.ID)
 	if err != nil {

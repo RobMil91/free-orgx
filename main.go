@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/RobMil91/free-orgx/config"
+	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 	"github.com/RobMil91/free-orgx/internal/setup"
 )
@@ -58,7 +59,7 @@ func logoutHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter
 	}
 }
 
-func projectHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter, r *http.Request) {
+func projectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Debug("reached project site")
 		c, err := r.Cookie(sessionCookieID)
@@ -73,9 +74,21 @@ func projectHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWrite
 			return
 		}
 
+		projects, err := projectRepo.GetProjectsByOwner(r.Context(), user.Name)
+		if err != nil {
+			l.Error("failed to get projects", "error", err)
+			projects = []models.Project{}
+		}
+
 		l.Debug("replying project site")
 		tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/project.html"))
-		tmpl.Execute(w, fmt.Sprintf("hello %s", user.Name))
+		tmpl.Execute(w, struct {
+			Username string
+			Projects []models.Project
+		}{
+			Username: user.Name,
+			Projects: projects,
+		})
 	}
 }
 
@@ -101,6 +114,39 @@ func loginSubmit(
 		})
 
 		w.Write([]byte(token.Value))
+	}
+}
+
+func createProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Debug("reached create project handler")
+
+		c, err := r.Cookie(sessionCookieID)
+		if err != nil {
+			w.Write([]byte("Please login first"))
+			return
+		}
+
+		user, err := userRepo.IsValid(r.Context(), c.Value)
+		if err != nil {
+			w.Write([]byte("Session invalid, please login again"))
+			return
+		}
+
+		projectName := r.FormValue("name")
+		if projectName == "" {
+			w.Write([]byte("Project name is required"))
+			return
+		}
+
+		project, err := projectRepo.CreateProject(r.Context(), projectName, user.Name)
+		if err != nil {
+			l.Error("failed to create project", "error", err, "user", user.Name)
+			w.Write([]byte("Failed to create project"))
+			return
+		}
+
+		w.Write([]byte(fmt.Sprintf("Created project: %s (ID: %s)", project.Name, project.ID)))
 	}
 }
 
@@ -133,10 +179,11 @@ func main() {
 		Level: level,
 	}))
 
-	http.HandleFunc("/project", projectHandler(logger, adapters.UserRep))
+	http.HandleFunc("/project", projectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	http.HandleFunc("/login", loginHandler(logger))
 	http.HandleFunc("/submit", loginSubmit(logger, adapters.UserRep))
 	http.HandleFunc("/logout", logoutHandler(logger, adapters.UserRep))
+	http.HandleFunc("/project/create", createProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
 	portStr := fmt.Sprintf(":%s", cfg.Port)

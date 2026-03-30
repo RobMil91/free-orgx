@@ -21,7 +21,8 @@ const (
 )
 
 type RAM struct {
-	Users map[string]ports.User
+	Users    map[string]ports.User
+	Projects map[string][]models.Project
 }
 
 // GetAll implements [ports.UserRepo].
@@ -50,8 +51,31 @@ func (r *RAM) Logout(ctx context.Context, name string) error {
 }
 
 // CreateProject implements [ports.ProjectRepo].
-func (r *RAM) CreateProject(ctx context.Context, name string) (models.Project, error) {
-	panic("unimplemented")
+func (r *RAM) CreateProject(ctx context.Context, name, owner string) (models.Project, error) {
+	id, _ := CreateRandStr(16)
+	project := models.Project{
+		ID:      *id,
+		Name:    name,
+		Owner:   owner,
+		Created: time.Now().Format(time.RFC3339),
+	}
+	if r.Projects == nil {
+		r.Projects = make(map[string][]models.Project)
+	}
+	r.Projects[owner] = append(r.Projects[owner], project)
+	return project, nil
+}
+
+// GetProjectsByOwner implements [ports.ProjectRepo].
+func (r *RAM) GetProjectsByOwner(ctx context.Context, owner string) ([]models.Project, error) {
+	if r.Projects == nil {
+		return []models.Project{}, nil
+	}
+	projects, ok := r.Projects[owner]
+	if !ok {
+		return []models.Project{}, nil
+	}
+	return projects, nil
 }
 
 // DeleteProject implements [ports.ProjectRepo].

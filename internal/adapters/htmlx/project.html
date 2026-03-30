@@ -1,5 +1,28 @@
-<!DOCTYPE html><html><body>
-<h1> Hello Project</h1> 
+<!DOCTYPE html>
+<html>
+<body>
+<h1>Projects for {{.Username}}</h1>
+
+<form hx-post="/project/create" hx-trigger="submit" hx-target="#result" hx-swap="innerHTML">
+  <label>
+    Project Name:
+    <input type="text" name="name" required>
+  </label>
+  <button type="submit">Create Project</button>
+</form>
+<div id="result"></div>
+
+<h2>Your Projects</h2>
+{{if .Projects}}
+<ul>
+  {{range .Projects}}
+  <li>{{.Name}} (ID: {{.ID}})</li>
+  {{end}}
+</ul>
+{{else}}
+<p>No projects yet. Create one above!</p>
+{{end}}
 
 <button hx-get="/" hx-target="body" hx-swap="outerHTML">Home</button>
-</body></html>
+</body>
+</html>

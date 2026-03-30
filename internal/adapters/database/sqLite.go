@@ -48,7 +48,15 @@ func (s *SQLiteAdapter) GetAll(ctx context.Context) ([]ports.User, error) {
 }
 
 func NewSQLite() (*SQLiteAdapter, error) {
-	db, err := sql.Open("sqlite3", "orgxdb.db")
+	return newSQLiteWithFile("orgxdb.db")
+}
+
+func NewSQLiteForTest(name string) (*SQLiteAdapter, error) {
+	return newSQLiteWithFile(fmt.Sprintf("test_%s.db", name))
+}
+
+func newSQLiteWithFile(filename string) (*SQLiteAdapter, error) {
+	db, err := sql.Open("sqlite3", filename)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +254,7 @@ func (s *SQLiteAdapter) IsValid(ctx context.Context, c string) (*ports.User, err
 }
 
 // CreateProject implements [ports.ProjectRepo].
-func (s *SQLiteAdapter) CreateProject(ctx context.Context, name string) (models.Project, error) {
+func (s *SQLiteAdapter) CreateProject(ctx context.Context, name, owner string) (models.Project, error) {
 	id, err := createRandStr(16)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not generate project id: %v", err))
@@ -262,7 +270,7 @@ func (s *SQLiteAdapter) CreateProject(ctx context.Context, name string) (models.
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(*id, name, "", created)
+	_, err = stmt.Exec(*id, name, owner, created)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not create project: %v", err))
 		return models.Project{}, ports.DatabaseError
@@ -271,9 +279,34 @@ func (s *SQLiteAdapter) CreateProject(ctx context.Context, name string) (models.
 	return models.Project{
 		ID:      *id,
 		Name:    name,
-		Owner:   "",
+		Owner:   owner,
 		Created: created,
 	}, nil
+}
+
+// GetProjectsByOwner implements [ports.ProjectRepo].
+func (s *SQLiteAdapter) GetProjectsByOwner(ctx context.Context, owner string) ([]models.Project, error) {
+	rows, err := s.Conn.Query(`SELECT id, name, owner, created_at FROM projects WHERE owner = ?`, owner)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not query projects: %v", err))
+		return nil, ports.DatabaseError
+	}
+	defer rows.Close()
+
+	var projects []models.Project
+	for rows.Next() {
+		var p models.Project
+		if err := rows.Scan(&p.ID, &p.Name, &p.Owner, &p.Created); err != nil {
+			return nil, err
+		}
+		projects = append(projects, p)
+	}
+
+	if projects == nil {
+		projects = []models.Project{}
+	}
+
+	return projects, nil
 }
 
 // DeleteProject implements [ports.ProjectRepo].
@@ -300,4 +333,8 @@ func createRandStr(length int) (*string, error) {
 	}
 	randStr := base64.URLEncoding.EncodeToString(b)
 	return &randStr, nil
+}
+
+func CleanupTestDB(name string) {
+	os.Remove(fmt.Sprintf("test_%s.db", name))
 }
