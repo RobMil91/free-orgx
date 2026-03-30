@@ -2,10 +2,14 @@ package database
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
@@ -61,7 +65,7 @@ func NewSQLite() (*SQLiteAdapter, error) {
 }
 
 func (s *SQLiteAdapter) CreateTables() error {
-	createTable := `
+	createUsersTable := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		username TEXT NOT NULL UNIQUE,
@@ -71,7 +75,20 @@ func (s *SQLiteAdapter) CreateTables() error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`
 
-	_, err := s.Conn.Exec(createTable)
+	_, err := s.Conn.Exec(createUsersTable)
+	if err != nil {
+		return err
+	}
+
+	createProjectsTable := `
+	CREATE TABLE IF NOT EXISTS projects (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		owner TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	_, err = s.Conn.Exec(createProjectsTable)
 	if err != nil {
 		return err
 	}
@@ -81,7 +98,31 @@ func (s *SQLiteAdapter) CreateTables() error {
 
 // ChangePassword implements [ports.UserRepo].
 func (s *SQLiteAdapter) ChangePassword(ctx context.Context, name string, newPassword string) error {
-	panic("unimplemented")
+	pepper := os.Getenv("PASSWORD_PEPPER")
+	if pepper == "" {
+		slog.Error("PASSWORD_PEPPER not set in environment")
+		return ports.DatabaseError
+	}
+
+	combined := newPassword + pepper
+	hash, err := bcrypt.GenerateFromPassword([]byte(combined), bcrypt.DefaultCost)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not hash new password for user %s: %v", name, err))
+		return ports.DatabaseError
+	}
+
+	result, err := s.Conn.Exec(`UPDATE users SET password_hash = ? WHERE username = ?`, hash, name)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not update password for user %s: %v", name, err))
+		return ports.DatabaseError
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return ports.UserNotFound
+	}
+
+	return nil
 }
 
 // Create implements [ports.UserRepo].
@@ -101,7 +142,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 	}
 
 	stmt, err := s.Conn.Prepare(`
-    INSERT INTO users (username, password_hash, token, salt)
+    INSERT INTO users (username, password_hash, token, role)
     VALUES (?, ?, ?, ?)
 `)
 	if err != nil {
@@ -111,7 +152,7 @@ func (s *SQLiteAdapter) Create(ctx context.Context, name string, password string
 
 	defer stmt.Close()
 
-	_, err = stmt.Exec(name, hash, "")
+	_, err = stmt.Exec(name, hash, "", "user")
 	if err != nil {
 		slog.Error(err.Error())
 		return ports.DatabaseError
@@ -133,32 +174,129 @@ func (s *SQLiteAdapter) Delete(ctx context.Context, name string) error {
 
 // Logout implements [ports.UserRepo].
 func (s *SQLiteAdapter) Logout(ctx context.Context, name string) error {
-	panic("unimplemented")
+	_, err := s.Conn.Exec(`UPDATE users SET token = NULL WHERE username = ?`, name)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not logout user %s: %v", name, err))
+		return ports.DatabaseError
+	}
+	return nil
 }
 
 // GetUserToken implements [ports.UserRepo].
 func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password string) (*ports.SessionCookie, error) {
-	var (
-		passwordHash string
-	)
+	pepper := os.Getenv("PASSWORD_PEPPER")
+	if pepper == "" {
+		slog.Error("PASSWORD_PEPPER not set in environment")
+		return nil, ports.DatabaseError
+	}
+
+	var passwordHash string
 	query := `SELECT password_hash FROM users WHERE username = ?`
 	if err := s.Conn.QueryRow(query, name).Scan(&passwordHash); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w", ports.UserNotFound)
+		}
 		return nil, fmt.Errorf("can not get user with name %s, [%w]", name, err)
 	}
 
+	combined := password + pepper
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(combined)); err != nil {
+		return nil, errors.New("bad password")
+	}
+
+	token, err := createRandStr(32)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not create cookie for user %s: %v", name, err))
+		return nil, ports.DatabaseError
+	}
+
+	_, err = s.Conn.Exec(`UPDATE users SET token = ? WHERE username = ?`, *token, name)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not update token for user %s: %v", name, err))
+		return nil, ports.DatabaseError
+	}
+
+	return &ports.SessionCookie{
+		Value:      *token,
+		CreateTime: time.Now(),
+	}, nil
 }
 
 // IsValid implements [ports.UserRepo].
 func (s *SQLiteAdapter) IsValid(ctx context.Context, c string) (*ports.User, error) {
-	panic("unimplemented")
+	var user ports.User
+	var createTime time.Time
+	query := `SELECT id, username, role, created_at FROM users WHERE token = ?`
+	err := s.Conn.QueryRow(query, c).Scan(&user.ID, &user.Name, &user.Role, &createTime)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("no user with this active token")
+		}
+		slog.Error(fmt.Sprintf("could not validate token: %v", err))
+		return nil, ports.DatabaseError
+	}
+
+	expirationTime := createTime.Add(time.Minute * 60)
+	if time.Now().After(expirationTime) {
+		return nil, errors.New("token expired")
+	}
+
+	return &user, nil
 }
 
 // CreateProject implements [ports.ProjectRepo].
 func (s *SQLiteAdapter) CreateProject(ctx context.Context, name string) (models.Project, error) {
-	panic("unimplemented")
+	id, err := createRandStr(16)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not generate project id: %v", err))
+		return models.Project{}, ports.DatabaseError
+	}
+
+	created := time.Now().Format(time.RFC3339)
+
+	stmt, err := s.Conn.Prepare(`INSERT INTO projects (id, name, owner, created_at) VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not prepare project insert: %v", err))
+		return models.Project{}, ports.DatabaseError
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(*id, name, "", created)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not create project: %v", err))
+		return models.Project{}, ports.DatabaseError
+	}
+
+	return models.Project{
+		ID:      *id,
+		Name:    name,
+		Owner:   "",
+		Created: created,
+	}, nil
 }
 
 // DeleteProject implements [ports.ProjectRepo].
 func (s *SQLiteAdapter) DeleteProject(ctx context.Context, id string) error {
-	panic("unimplemented")
+	result, err := s.Conn.Exec(`DELETE FROM projects WHERE id = ?`, id)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not delete project %s: %v", id, err))
+		return ports.DatabaseError
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errors.New("project not found")
+	}
+
+	return nil
+}
+
+func createRandStr(length int) (*string, error) {
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	randStr := base64.URLEncoding.EncodeToString(b)
+	return &randStr, nil
 }
