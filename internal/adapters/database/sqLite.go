@@ -56,6 +56,7 @@ func NewSQLite() (*SQLiteAdapter, error) {
 	adapter := &SQLiteAdapter{
 		Conn: db,
 	}
+
 	err = adapter.CreateTables()
 	if err != nil {
 		return nil, err
