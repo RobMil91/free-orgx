@@ -3,6 +3,10 @@
 <body>
 <h1>Projects for {{.Username}}</h1>
 
+{{if .IsAdmin}}
+<button hx-get="/admin/users" hx-target="body" hx-swap="outerHTML">Manage Users</button>
+{{end}}
+
 <form hx-post="/project/create" hx-trigger="submit" hx-target="#result" hx-swap="innerHTML">
   <label>
     Project Name:

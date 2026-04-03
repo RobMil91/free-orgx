@@ -170,17 +170,6 @@ func TestSQLite_ChangePassword(t *testing.T) {
 	}
 }
 
-func TestSQLite_ChangePassword_UserNotFound(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	err := db.ChangePassword(ctx, "nonexistent", "newpassword")
-	if err == nil {
-		t.Error("ChangePassword() should fail for nonexistent user")
-	}
-}
-
 func TestSQLite_Logout(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -539,3 +528,456 @@ func TestSQLite_CountUsers(t *testing.T) {
 
 var _ ports.UserRepo = (*database.SQLiteAdapter)(nil)
 var _ ports.ProjectRepo = (*database.SQLiteAdapter)(nil)
+
+func TestSQLite_Logout_Error(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("logout_error")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("logout_error")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	err = db.Logout(ctx, "testuser")
+	if err == nil {
+		t.Error("Logout() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_Delete_Error(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("delete_error")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("delete_error")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	err = db.Delete(ctx, "testuser")
+	if err == nil {
+		t.Error("Delete() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_ChangePassword_NoPepper(t *testing.T) {
+	os.Unsetenv("PASSWORD_PEPPER")
+	db, err := database.NewSQLiteForTest("change_pass_no_pepper")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("change_pass_no_pepper")
+	}()
+
+	ctx := context.Background()
+	err = db.ChangePassword(ctx, "testuser", "newpass")
+	if err == nil {
+		t.Error("ChangePassword() should fail without pepper")
+	}
+}
+
+func TestSQLite_GetProjectsByOwner_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("get_projects_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("get_projects_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.GetProjectsByOwner(ctx, "owner")
+	if err == nil {
+		t.Error("GetProjectsByOwner() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_DeleteProject_Error(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("delete_proj_error")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("delete_proj_error")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	err = db.DeleteProject(ctx, "some-id")
+	if err == nil {
+		t.Error("DeleteProject() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_IsValid_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("isvalid_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("isvalid_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.IsValid(ctx, "some-token")
+	if err == nil {
+		t.Error("IsValid() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_IsValid_ExpiredTokenManipulated(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("isvalid_expired_manip")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("isvalid_expired_manip")
+	}()
+
+	ctx := context.Background()
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
+
+	db.Conn.Exec(`UPDATE users SET created_at = datetime('now', '-2 hours') WHERE username = ?`, "testuser")
+
+	token, _ := db.GetUserToken(ctx, "testuser", "password")
+
+	_, err = db.IsValid(ctx, token.Cookie.Value)
+	if err == nil {
+		t.Error("IsValid() should fail for expired token")
+	}
+	if err.Error() != "token expired" {
+		t.Errorf("expected 'token expired' error, got: %v", err)
+	}
+}
+
+func TestSQLite_GetAll_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("getall_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("getall_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.GetAll(ctx)
+	if err == nil {
+		t.Error("GetAll() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_CreateProject_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("create_proj_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("create_proj_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.CreateProject(ctx, "Project", "owner")
+	if err == nil {
+		t.Error("CreateProject() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_CountAdmins_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("count_admins_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("count_admins_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.CountAdmins(ctx)
+	if err == nil {
+		t.Error("CountAdmins() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_CountUsers_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("count_users_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("count_users_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.CountUsers(ctx)
+	if err == nil {
+		t.Error("CountUsers() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_GetUserToken_DBError(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("gettoken_dberror")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("gettoken_dberror")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.GetUserToken(ctx, "testuser", "password")
+	if err == nil {
+		t.Error("GetUserToken() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_GetAdmin_ClosedConnection(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("getadmin_closed")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("getadmin_closed")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.GetAdmin(ctx)
+	if err == nil {
+		t.Error("GetAdmin() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_RegisterFirstAdmin_DBError(t *testing.T) {
+	os.Setenv("PASSWORD_PEPPER", "test-pepper")
+	db, err := database.NewSQLiteForTest("register_first_db_error")
+	if err != nil {
+		t.Fatalf("failed to create test DB: %v", err)
+	}
+	defer func() {
+		db.Conn.Close()
+		database.CleanupTestDB("register_first_db_error")
+	}()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err = db.GetUserToken(ctx, "firstadmin", "password")
+	if err == nil {
+		t.Error("should fail when connection is closed")
+	}
+}
+
+func TestSQLite_ChangePassword_UserNotFound(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	err := db.ChangePassword(ctx, "nonexistent", "newpass")
+	if err == nil {
+		t.Error("ChangePassword() should fail for nonexistent user")
+	}
+	if err != ports.UserNotFound {
+		t.Errorf("expected UserNotFound error, got: %v", err)
+	}
+}
+
+func TestSQLite_GetProjectsByOwner_ScanError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.CreateProject(ctx, "Project1", "owner")
+
+	db.Conn.Close()
+
+	_, err := db.GetProjectsByOwner(ctx, "owner")
+	if err == nil {
+		t.Error("GetProjectsByOwner() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_GetUserToken_QueryError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
+
+	db.Conn.Close()
+
+	_, err := db.GetUserToken(ctx, "testuser", "password")
+	if err == nil {
+		t.Error("GetUserToken() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_GetUserToken_UpdateError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
+
+	rows, _ := db.Conn.Query(`SELECT id, password_hash, role FROM users WHERE username = ?`, "testuser")
+	_ = rows
+	db.Conn.Close()
+
+	_, err := db.GetUserToken(ctx, "testuser", "password")
+	if err == nil {
+		t.Error("GetUserToken() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_Create_StmtError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
+
+	db.Conn.Close()
+
+	err := db.Create(ctx, "newuser", "password", ports.RoleUser)
+	if err == nil {
+		t.Error("Create() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_ChangePassword_ExecError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
+
+	db.Conn.Close()
+
+	err := db.ChangePassword(ctx, "testuser", "newpass")
+	if err == nil {
+		t.Error("ChangePassword() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_RegisterFirstAdmin_BcryptError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err := db.GetUserToken(ctx, "firstadmin", "password")
+	if err == nil {
+		t.Error("should fail when connection is closed")
+	}
+}
+
+func TestSQLite_RegisterFirstAdmin_ExecError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err := db.GetUserToken(ctx, "firstadmin", "password")
+	if err == nil {
+		t.Error("should fail when connection is closed")
+	}
+}
+
+func TestSQLite_GetAll_ScanError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	db.Create(ctx, "testuser", "password", ports.RoleUser)
+
+	db.Conn.Close()
+
+	_, err := db.GetAll(ctx)
+	if err == nil {
+		t.Error("GetAll() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_CreateProject_PrepareError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	db.Conn.Close()
+
+	ctx := context.Background()
+	_, err := db.CreateProject(ctx, "Project", "owner")
+	if err == nil {
+		t.Error("CreateProject() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_CreateProject_ExecError(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	stmt, _ := db.Conn.Prepare(`INSERT INTO projects (id, name, owner, created_at) VALUES (?, ?, ?, ?)`)
+	stmt.Close()
+	db.Conn.Close()
+
+	_, err := db.CreateProject(ctx, "Project", "owner")
+	if err == nil {
+		t.Error("CreateProject() should fail when connection is closed")
+	}
+}
+
+func TestSQLite_newSQLiteWithFile_BadPath(t *testing.T) {
+	_, err := database.NewSQLiteForTest("/invalid/path/test.db")
+	if err == nil {
+		t.Error("should fail for invalid path")
+	}
+}

@@ -27,12 +27,22 @@ type RAM struct {
 
 // GetAll implements [ports.UserRepo].
 func (r *RAM) GetAll(ctx context.Context) ([]ports.User, error) {
-	panic("unimplemented")
+	users := make([]ports.User, 0, len(r.Users))
+	for _, u := range r.Users {
+		users = append(users, u)
+	}
+	return users, nil
 }
 
 // ChangePassword implements [ports.UserRepo].
 func (r *RAM) ChangePassword(ctx context.Context, name string, newPassword string) error {
-	panic("unimplemented")
+	u, ok := r.Users[name]
+	if !ok {
+		return ports.UserNotFound
+	}
+	u.Password = newPassword
+	r.Users[name] = u
+	return nil
 }
 
 // Create implements [ports.UserRepo].
@@ -114,7 +124,15 @@ func (r *RAM) GetProjectsByOwner(ctx context.Context, owner string) ([]models.Pr
 
 // DeleteProject implements [ports.ProjectRepo].
 func (r *RAM) DeleteProject(ctx context.Context, id string) error {
-	panic("unimplemented")
+	for owner, projects := range r.Projects {
+		for i, p := range projects {
+			if p.ID == id {
+				r.Projects[owner] = append(projects[:i], projects[i+1:]...)
+				return nil
+			}
+		}
+	}
+	return errors.New("project not found")
 }
 
 func (r *RAM) GetUserToken(ctx context.Context, name, password string) (*ports.LoginResult, error) {

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>User Management</h1>
+
+<form hx-post="/admin/user/create" hx-trigger="submit" hx-target="#result" hx-swap="innerHTML">
+  <label>
+    Username:
+    <input type="text" name="username" required>
+  </label>
+  <label>
+    Password:
+    <input type="password" name="password" required>
+  </label>
+  <button type="submit">Create User</button>
+</form>
+<div id="result"></div>
+
+<h2>Existing Users</h2>
+{{if .Users}}
+<ul>
+  {{range .Users}}
+  <li>{{.Name}} ({{.Role}})</li>
+  {{end}}
+</ul>
+{{else}}
+<p>No users found.</p>
+{{end}}
+
+<button hx-get="/project" hx-target="body" hx-swap="outerHTML">Back to Projects</button>
+</body>
+</html>
