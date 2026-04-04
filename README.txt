@@ -10,4 +10,4 @@ change port
 go run main.go -port 1234
 
 
-export LOG_LEVEL=DEBUG
+export LOG_LEVEL=debug
