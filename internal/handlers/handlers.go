@@ -56,7 +56,6 @@ func LogoutHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter
 
 func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached project site")
 		c, err := r.Cookie(SessionCookieID)
 		if err != nil {
 			w.Write([]byte("Please login first"))

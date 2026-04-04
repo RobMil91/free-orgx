@@ -661,9 +661,15 @@ func TestSQLite_IsValid_ExpiredTokenManipulated(t *testing.T) {
 	ctx := context.Background()
 	db.Create(ctx, "testuser", "password", ports.RoleUser)
 
-	db.Conn.Exec(`UPDATE users SET created_at = datetime('now', '-2 hours') WHERE username = ?`, "testuser")
+	token, err := db.GetUserToken(ctx, "testuser", "password")
+	if err != nil {
+		t.Fatalf("required action failed %v", err)
+	}
 
-	token, _ := db.GetUserToken(ctx, "testuser", "password")
+	_, err = db.Conn.Exec(`UPDATE users SET created_at = datetime('now', '-2 hours') WHERE username = ?`, "testuser")
+	if err != nil {
+		t.Fatalf("required action failed %v", err)
+	}
 
 	_, err = db.IsValid(ctx, token.Cookie.Value)
 	if err == nil {

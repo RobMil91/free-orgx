@@ -272,6 +272,12 @@ func (s *SQLiteAdapter) GetUserToken(ctx context.Context, name string, password 
 		return nil, ports.DatabaseError
 	}
 
+	_, err = s.Conn.Exec(`UPDATE users SET created_at= ? WHERE username = ?`, time.Now(), name)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not update create time for user %s: %v", name, err))
+		return nil, ports.DatabaseError
+	}
+
 	return &ports.LoginResult{
 		Cookie: &ports.SessionCookie{
 			Value:      *token,
@@ -344,15 +350,17 @@ func (s *SQLiteAdapter) IsValid(ctx context.Context, c string) (*ports.User, err
 	query := `SELECT id, username, role, created_at FROM users WHERE token = ?`
 	err := s.Conn.QueryRow(query, c).Scan(&user.ID, &user.Name, &user.Role, &createTime)
 	if err != nil {
+		slog.Error(fmt.Sprintf("could not validate token: %s", err.Error()))
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("no user with this active token")
 		}
-		slog.Error(fmt.Sprintf("could not validate token: %v", err))
+
 		return nil, ports.DatabaseError
 	}
 
 	expirationTime := createTime.Add(time.Minute * 60)
 	if time.Now().After(expirationTime) {
+		slog.Error(fmt.Sprintf("token expired experiationTime %s", expirationTime.String()))
 		return nil, errors.New("token expired")
 	}
 
