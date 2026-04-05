@@ -148,7 +148,16 @@ func CreateProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo p
 			return
 		}
 
-		w.Write([]byte(fmt.Sprintf("Created project: %s (ID: %s)", project.Name, project.ID)))
+		//TODO: send back a piece of html that resembles the project
+		tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/proj.html"))
+		tmpl.Execute(w, struct {
+			ID   string
+			Name string
+		}{
+			ID:   project.ID,
+			Name: project.Name,
+		})
+
 	}
 }
 

@@ -124,24 +124,12 @@
   </header>
   <main>
     <div class="card">
-      <h1>Create New Project</h1>
-      <form hx-post="/project/create" hx-trigger="submit" hx-target="#result" hx-swap="innerHTML">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Project Name</label>
-            <input type="text" name="name" placeholder="Enter project name" required>
-          </div>
-          <button type="submit">Create</button>
-        </div>
-      </form>
-      <div id="result"></div>
-    </div>
-    <div class="card">
       <h2>Your Projects</h2>
       {{if .Projects}}
-      <ul class="project-list">
+      <ul id="projects" class="project-list">
         {{range .Projects}}
         <li class="project-item">
+        <!-- <li>{{.}}</li> -->
           <span class="project-name">{{.Name}}</span>
           <span class="project-id">ID: {{.ID}}</span>
         </li>
@@ -150,6 +138,12 @@
       {{else}}
       <div class="empty-state">No projects yet. Create one above!</div>
       {{end}}
+
+    <form hx-post="/project/create" hx-trigger="submit" hx-target="#projects" hx-swap="beforeend"> 
+    <input type="text" name="name" placeholder="Enter project name" required>
+    <button type="submit"> Create </button>
+        </form>
+
     </div>
   </main>
 </body>
