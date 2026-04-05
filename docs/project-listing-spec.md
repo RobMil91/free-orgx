@@ -6,16 +6,31 @@ The project listing feature displays all projects owned by the currently authent
 
 ## Functionality
 
+Projects hold an ammount of tasks.
+Tasks are displayed as a list with the following details:
+- Task ID
+- Title
+- Description
+- Deadline
+- Status (e.g., "In Progress", "Done", Blocked)
+- Members (e.g., "John Doe", "Jane Smith")
+- Owner
+
 ### Core Features
 
 1. **List User Projects**
-   - Fetch all projects where `owner = current_user`
+   - Fetch all projects where `current_user = part of the project`
    - Display project name and ID for each project
    - Show empty state message if user has no projects
 
 2. **Authentication Required**
    - Users must be logged in to view their projects
    - Redirect to login prompt if not authenticated
+
+3. Create New Projects
+
+3. **Delete Projects**
+    - Owners can delete Project
 
 ### Data Flow
 
@@ -32,16 +47,6 @@ The project listing feature displays all projects owned by the currently authent
 
 ### Database Schema
 
-```sql
-CREATE TABLE projects (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    owner TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Interface Changes
 
 #### `ports.ProjectRepo`
 
@@ -73,17 +78,3 @@ struct {
     Projects []models.Project
 }
 ```
-
-## Error Handling
-
-| Scenario | Response |
-|----------|----------|
-| No cookie | "Please login first" |
-| Invalid/expired session | "Session invalid, please login again" |
-| DB error | Log error, show empty project list |
-
-## Security
-
-- Projects are filtered by owner (username) from session
-- Users cannot see other users' projects
-- Session validation on every request
