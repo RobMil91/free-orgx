@@ -78,3 +78,5 @@ struct {
     Projects []models.Project
 }
 ```
+
+Projects can be renamed and delted. they organizse around the id.
