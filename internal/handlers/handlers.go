@@ -161,6 +161,44 @@ func CreateProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo p
 	}
 }
 
+func DeleteProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Debug("reached delete  project handler")
+
+		c, err := r.Cookie(SessionCookieID)
+		if err != nil {
+			w.Write([]byte("Please login first"))
+			return
+		}
+
+		user, err := userRepo.IsValid(r.Context(), c.Value)
+		if err != nil {
+			w.Write([]byte("Session invalid, please login again"))
+			return
+		}
+
+		l.Debug("delete id " + r.PathValue("id"))
+
+		err = projectRepo.DeleteProject(r.Context(), r.PathValue("id"))
+		if err != nil {
+			l.Error("failed to create project", "error", err, "user", user.Name)
+			w.Write([]byte("Failed to create project"))
+			return
+		}
+
+		//TODO: send back a piece of html that resembles the project
+		// tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/proj.html"))
+		// tmpl.Execute(w, struct {
+		// 	ID   string
+		// 	Name string
+		// }{
+		// 	ID:   project.ID,
+		// 	Name: project.Name,
+		// })
+
+	}
+}
+
 func AdminUsersHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Debug("reached admin users handler")

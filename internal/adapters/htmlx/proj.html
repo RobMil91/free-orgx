@@ -1,5 +1,10 @@
         <li class="project-item">
-        <!-- <li>{{.}}</li> -->
           <span class="project-name">{{.Name}}</span>
           <span class="project-id">ID: {{.ID}}</span>
+                <button 
+                    hx-delete="project/delete/{{.ID}}"
+                    hx-target="closest li"
+                    hx-swap="outerHTML">
+                    Delete
+                </button>
         </li>

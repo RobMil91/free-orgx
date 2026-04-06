@@ -47,6 +47,7 @@ func main() {
 	http.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
 	http.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
 	http.HandleFunc("/project/create", handlers.CreateProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
+	http.HandleFunc("/project/delete/{id}", handlers.DeleteProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	http.HandleFunc("/admin/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	http.HandleFunc("/admin/user/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
 	http.Handle("/", http.FileServer(http.Dir("./static")))
