@@ -12,12 +12,12 @@ import (
 
 const (
 	SessionCookieID = "session_id"
+	htmxPath = "static/"
 )
-
 func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Debug("reached login handler")
-		tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/login.html"))
+		tmpl := template.Must(template.ParseFiles(htmxPath +"login.html"))
 		tmpl.Execute(w, nil)
 	}
 }
@@ -74,8 +74,8 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 			projects = []models.Project{}
 		}
 
-		l.Debug("replying project site")
-		tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/project.html"))
+		l.Debug("replying project site with %v", projects)
+		tmpl := template.Must(template.ParseFiles(htmxPath +"project.html"))
 		tmpl.Execute(w, struct {
 			Username string
 			Projects []models.Project
@@ -149,7 +149,7 @@ func CreateProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo p
 		}
 
 		//TODO: send back a piece of html that resembles the project
-		tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/proj.html"))
+		tmpl := template.Must(template.ParseFiles(htmxPath +"proj.html"))
 		tmpl.Execute(w, struct {
 			ID   string
 			Name string
@@ -185,17 +185,6 @@ func DeleteProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo p
 			w.Write([]byte("Failed to create project"))
 			return
 		}
-
-		//TODO: send back a piece of html that resembles the project
-		// tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/proj.html"))
-		// tmpl.Execute(w, struct {
-		// 	ID   string
-		// 	Name string
-		// }{
-		// 	ID:   project.ID,
-		// 	Name: project.Name,
-		// })
-
 	}
 }
 
@@ -226,7 +215,7 @@ func AdminUsersHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWr
 			users = []ports.User{}
 		}
 
-		tmpl := template.Must(template.ParseFiles("internal/adapters/htmlx/admin_users.html"))
+		tmpl := template.Must(template.ParseFiles(htmxPath +"admin_users.html"))
 		tmpl.Execute(w, struct {
 			Users []ports.User
 		}{
