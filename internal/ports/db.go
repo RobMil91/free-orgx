@@ -10,6 +10,19 @@ import (
 
 var (
 	UserNotFound = errors.New("[no such user]")
+	AdminExists  = errors.New("[admin already exists]")
+	InvalidRole  = errors.New("[invalid role]")
+)
+
+type LoginResult struct {
+	Cookie    *SessionCookie
+	User      *User
+	IsNewUser bool
+}
+
+const (
+	RoleAdmin = "admin"
+	RoleUser  = "user"
 )
 
 type User struct {
@@ -26,21 +39,21 @@ type SessionCookie struct {
 }
 
 type UserRepo interface {
-	// GetUserToken requests the user for being in the database and returns a token, if he exists
-	// on error UserNotFound means no such user in the db GetUserToken(ctx context.Context, name, password string) (string, error)
-	GetUserToken(ctx context.Context, name, password string) (*SessionCookie, error)
+	GetUserToken(ctx context.Context, name, password string) (*LoginResult, error)
 	IsValid(ctx context.Context, c string) (*User, error)
-	Create(ctx context.Context, name, password string) error
-
-	//Use Cookie to authorize for delete etc action
+	Create(ctx context.Context, name, password, role string) error
 	Delete(ctx context.Context, name string) error
 	GetAll(ctx context.Context) ([]User, error)
 	ChangePassword(ctx context.Context, name, newPassword string) error
 	Logout(ctx context.Context, name string) error
+	GetAdmin(ctx context.Context) (*User, error)
+	CountAdmins(ctx context.Context) (int, error)
+	CountUsers(ctx context.Context) (int, error)
 }
 
 type ProjectRepo interface {
-	CreateProject(ctx context.Context, name string) (models.Project, error)
+	CreateProject(ctx context.Context, name, owner string) (models.Project, error)
+	GetProjectsByOwner(ctx context.Context, owner string) ([]models.Project, error)
 	DeleteProject(ctx context.Context, id string) error
 }
 
