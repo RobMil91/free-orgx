@@ -123,10 +123,10 @@
     </div>
   </header>
   <main>
-    <div class="card">
+    <div id="projects" class="card">
       <h2>Your Projects</h2>
       {{if .Projects}}
-      <ul id="projects" class="project-list">
+      <ul  class="project-list">
         {{range .Projects}}
         <li class="project-item">
           <span class="project-name">{{.Name}}</span>

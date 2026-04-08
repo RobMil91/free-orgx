@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
@@ -70,26 +69,11 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 			return
 		}
 
-		projectResp := []models.Project{
-			{
-				ID:      "test",
-				Name:    "holder",
-				Owner:   "noone",
-				Created: time.Now().String(),
-			},
-		}
-
 		projects, err := projectRepo.GetProjectsByOwner(r.Context(), user.Name)
 		if err != nil {
 			l.Error("failed to get projects", "error", err)
 		}
 
-		if len(projects) > 0 {
-			l.Debug("found projects")
-			projectResp = projects
-		}
-
-		l.Debug("replying project site with %v", projectResp)
 		tmpl := template.Must(template.ParseFiles(htmxPath + "project.html"))
 		tmpl.Execute(w, struct {
 			Username string
@@ -97,7 +81,7 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 			IsAdmin  bool
 		}{
 			Username: user.Name,
-			Projects: projectResp,
+			Projects: projects,
 			IsAdmin:  user.Role == ports.RoleAdmin,
 		})
 	}
