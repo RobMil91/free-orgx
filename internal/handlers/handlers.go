@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
@@ -12,12 +13,13 @@ import (
 
 const (
 	SessionCookieID = "session_id"
-	htmxPath = "static/"
+	htmxPath        = "static/"
 )
+
 func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Debug("reached login handler")
-		tmpl := template.Must(template.ParseFiles(htmxPath +"login.html"))
+		tmpl := template.Must(template.ParseFiles(htmxPath + "login.html"))
 		tmpl.Execute(w, nil)
 	}
 }
@@ -68,21 +70,34 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 			return
 		}
 
+		projectResp := []models.Project{
+			{
+				ID:      "test",
+				Name:    "holder",
+				Owner:   "noone",
+				Created: time.Now().String(),
+			},
+		}
+
 		projects, err := projectRepo.GetProjectsByOwner(r.Context(), user.Name)
 		if err != nil {
 			l.Error("failed to get projects", "error", err)
-			projects = []models.Project{}
 		}
 
-		l.Debug("replying project site with %v", projects)
-		tmpl := template.Must(template.ParseFiles(htmxPath +"project.html"))
+		if len(projects) > 0 {
+			l.Debug("found projects")
+			projectResp = projects
+		}
+
+		l.Debug("replying project site with %v", projectResp)
+		tmpl := template.Must(template.ParseFiles(htmxPath + "project.html"))
 		tmpl.Execute(w, struct {
 			Username string
 			Projects []models.Project
 			IsAdmin  bool
 		}{
 			Username: user.Name,
-			Projects: projects,
+			Projects: projectResp,
 			IsAdmin:  user.Role == ports.RoleAdmin,
 		})
 	}
@@ -149,7 +164,7 @@ func CreateProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo p
 		}
 
 		//TODO: send back a piece of html that resembles the project
-		tmpl := template.Must(template.ParseFiles(htmxPath +"proj.html"))
+		tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
 		tmpl.Execute(w, struct {
 			ID   string
 			Name string
@@ -215,7 +230,7 @@ func AdminUsersHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWr
 			users = []ports.User{}
 		}
 
-		tmpl := template.Must(template.ParseFiles(htmxPath +"admin_users.html"))
+		tmpl := template.Must(template.ParseFiles(htmxPath + "admin_users.html"))
 		tmpl.Execute(w, struct {
 			Users []ports.User
 		}{
