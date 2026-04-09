@@ -50,6 +50,7 @@ func main() {
 	http.HandleFunc("/project/delete/{id}", handlers.DeleteProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	http.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	http.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
+
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 
 	portStr := fmt.Sprintf(":%s", cfg.Port)
