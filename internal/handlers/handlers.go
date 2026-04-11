@@ -263,3 +263,14 @@ func AdminCreateUserHandler(l *slog.Logger, db ports.UserRepo) func(w http.Respo
 		w.Write([]byte(fmt.Sprintf("User '%s' created successfully", username)))
 	}
 }
+
+type TaskHandler struct {
+}
+
+func (t *TaskHandler) HandleCreateTask() {
+
+}
+
+func (t *TaskHandler) HandleUpdateTask() {
+
+}

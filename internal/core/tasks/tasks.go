@@ -20,9 +20,14 @@ type TaskProducer interface {
 	NewEvent(ctx context.Context)
 }
 
+type TaskConsumer interface {
+	NewEvent(ctx context.Context)
+}
+
 // Organizer is used to organize tasks
 type Organizer struct {
 	Producer TaskProducer
+	Consumer TaskConsumer
 }
 
 func NewOrganizer(p TaskProducer) (*Organizer, error) {
