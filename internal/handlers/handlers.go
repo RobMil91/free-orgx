@@ -15,6 +15,14 @@ const (
 	htmxPath        = "static/"
 )
 
+func TasksHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Debug("reached tasks handler")
+		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
+		tmpl.Execute(w, nil)
+	}
+}
+
 func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Debug("reached login handler")
