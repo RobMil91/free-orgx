@@ -95,6 +95,32 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 	}
 }
 
+func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
+	c, err := r.Cookie(SessionCookieID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token in request %w", err)
+	}
+
+	user, err := u.IsValid(r.Context(), c.Value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid session  %w", err)
+	}
+
+	return user, nil
+}
+
+func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := auth(r, u)
+		if err != nil {
+			l.DebugContext(r.Context(), "user login failed")
+			w.Write([]byte("Session Validation failed"))
+			return
+		}
+
+	}
+}
+
 func LoginSubmit(
 	l *slog.Logger,
 	db ports.UserRepo,
