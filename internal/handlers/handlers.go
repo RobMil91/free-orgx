@@ -120,6 +120,8 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 
 		l.InfoContext(r.Context(), "hello")
 
+		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
+		tmpl.Execute(w, nil)
 	}
 }
 

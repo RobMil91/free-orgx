@@ -6,6 +6,7 @@
   <title>Projects - Free Orgx</title>
   <script src="/htmx.min.js"></script>
   <link rel="stylesheet" type="text/css" href="styles_project.css">
+  <link rel="stylesheet" type="text/css" href="styles_dashboard.css">
 </head>
 <body>
   <header>
@@ -21,14 +22,15 @@
     </div>
   </header>
   <main>
-    <div id="projects" class="card">
+      <div class="main" id="pagemain">
+    <!-- <div id="projects" class="card"> -->
       <h2>Your Projects</h2>
       {{if .Projects}}
       <ul  class="project-list">
         {{range .Projects}}
         <li class="project-item">
 
-    <a href="/projects/{{ .ID }}/tasks" >
+    <div class="clickable" hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain">
             <div>
             <span class="project-name" >{{.Name}}</span>
           <span class="project-id">ID: {{.ID}}</span>
@@ -40,8 +42,7 @@
                     Delete
                 </button> 
             </div>
-            </a>
-
+            </div>
         </li>
         {{end}}
       </ul>
@@ -59,6 +60,7 @@
         </form>
 
     </div>
+      <!-- </div> -->
   </main>
 </body>
 </html>
