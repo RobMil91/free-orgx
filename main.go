@@ -50,9 +50,8 @@ func main() {
 	http.HandleFunc("/project/delete/{id}", handlers.DeleteProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	http.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	http.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
-	// http.HandleFunc("/project/{id}/tasks", handlers.CreateProjectHandler(logger, adapters.UserRep, adapters.ProjectRep, adapters.TaskRepo))
 
-	http.HandleFunc("/project/{id}/tasks", handlers.ProjectTasksHandler(logger, adapters.UserRep))
+	http.HandleFunc("/projects/{id}/tasks", handlers.ProjectTasksHandler(logger, adapters.UserRep, nil))
 	http.HandleFunc("/tasks-demo", handlers.TasksHandler(logger))
 
 	http.Handle("/", http.FileServer(http.Dir("./static")))

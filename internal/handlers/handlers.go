@@ -118,6 +118,8 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 			return
 		}
 
+		l.InfoContext(r.Context(), "hello")
+
 	}
 }
 

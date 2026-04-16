@@ -27,7 +27,10 @@
       <ul  class="project-list">
         {{range .Projects}}
         <li class="project-item">
-          <span class="project-name">{{.Name}}</span>
+
+    <a href="/projects/{{ .ID }}/tasks" >
+            <div>
+            <span class="project-name" >{{.Name}}</span>
           <span class="project-id">ID: {{.ID}}</span>
                 <button 
                     hx-delete="project/delete/{{.ID}}"
@@ -35,7 +38,10 @@
                     hx-swap="outerHTML"
                     >
                     Delete
-                </button>
+                </button> 
+            </div>
+            </a>
+
         </li>
         {{end}}
       </ul>
