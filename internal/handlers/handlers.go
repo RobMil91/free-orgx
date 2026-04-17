@@ -118,10 +118,18 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 			return
 		}
 
-		l.InfoContext(r.Context(), "hello")
+		//get id of project
+		id := r.PathValue("id")
+
+		l.DebugContext(r.Context(), "hello project: "+id)
+
+		//open web socket connection?
 
 		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
 		tmpl.Execute(w, nil)
+
+		//open web socket connection?
+		//probably except in other handler
 	}
 }
 
