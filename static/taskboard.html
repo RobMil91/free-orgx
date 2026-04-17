@@ -9,7 +9,7 @@
   <link rel="stylesheet" type="text/css" href="styles_dashboard.css">
 </head>
   <!-- need to open 2 web socket connections? -->
-<body>
+  <body hx-ws="projects/{{ .ID }}/ws">
     <!-- <header class="header"> -->
     <!--     <div class="header-content"> -->
     <!--         <div class="logo"> -->
