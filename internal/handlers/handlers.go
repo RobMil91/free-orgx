@@ -123,13 +123,24 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 
 		l.DebugContext(r.Context(), "hello project: "+id)
 
-		//open web socket connection?
+		//accept ws connection?
 
 		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
-		tmpl.Execute(w, nil)
+
+		tmpl.Execute(w, struct {
+			ID string
+		}{
+			ID: id,
+		})
 
 		//open web socket connection?
 		//probably except in other handler
+	}
+}
+
+func ProjectTasksEvents(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Info("subscribe to task events for project X")
 	}
 }
 

@@ -52,6 +52,7 @@ func main() {
 	http.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
 
 	http.HandleFunc("/projects/{id}/tasks", handlers.ProjectTasksHandler(logger, adapters.UserRep, adapters.ProjectRep))
+	http.HandleFunc("/projects/{id}/ws", handlers.ProjectTasksEvents(logger, adapters.UserRep, nil))
 
 	http.Handle("/", http.FileServer(http.Dir("./static")))
 

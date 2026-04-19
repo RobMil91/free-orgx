@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Projects - Free Orgx</title>
   <script src="/htmx.min.js"></script>
+  <script src="/htmx.ws.js"></script>
+
+<!-- <script> -->
+<!--   const socket = new WebSocket('/ws'); -->
+<!-- </script> -->
   <link rel="stylesheet" type="text/css" href="styles_project.css">
   <link rel="stylesheet" type="text/css" href="styles_dashboard.css">
 </head>
@@ -24,14 +29,13 @@
   </header>
   <main>
       <div class="main" id="pagemain">
-    <!-- <div id="projects" class="card"> -->
       <h2>Your Projects</h2>
       {{if .Projects}}
       <ul  class="project-list">
         {{range .Projects}}
         <li class="project-item">
 
-    <div  hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain">
+    <div  hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain" hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
             <div>
             <span class="project-name" >{{.Name}}</span>
           <span class="project-id">ID: {{.ID}}</span>

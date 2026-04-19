@@ -4,13 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Board</title>
+  <script src="/htmx.ws.js"></script>
   <script src="/htmx.min.js"></script>
-  <script src="/htmx-ext-ws.js"></script>
   <link rel="stylesheet" type="text/css" href="styles_dashboard.css">
 </head>
-  <!-- need to open 2 web socket connections? -->
-  <body hx-ws="projects/{{ .ID }}/ws">
-
+  <body hx-ext  ws-connect="/projects/{{ .ID }}/ws">
+<div hx-ws-connect="/ws" hx-trigger="click">Click me to connect!</div>
     <main class="board">
         <div class="columns">
             <div class="column" data-status="todo">
