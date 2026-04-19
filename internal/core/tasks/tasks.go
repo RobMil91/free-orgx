@@ -33,3 +33,9 @@ type Organizer struct {
 func NewOrganizer(p TaskProducer) (*Organizer, error) {
 	panic("ni")
 }
+
+func HandleEvent(t Task) error {
+	// store to db always do first
+	// send to channel
+	panic("ni")
+}
