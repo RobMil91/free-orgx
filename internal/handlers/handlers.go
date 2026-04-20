@@ -140,7 +140,8 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 
 func ProjectTasksEvents(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.Info("subscribe to task events for project X")
+		id := r.PathValue("id")
+		l.DebugContext(r.Context(), fmt.Sprintf("attempt to subscribe to task events for project %s", id))
 	}
 }
 
