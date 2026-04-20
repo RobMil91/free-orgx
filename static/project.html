@@ -36,7 +36,9 @@
         <li class="project-item">
 
             <!-- TODO: this is bad in 2 ways one, back button will not work, second it seems that the called paged is not loaded in browser context -->
-    <div  hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain" hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
+    <!-- <div  hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain" hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws"> -->
+    <div  hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
+              <a href="/projects/{{ .ID }}/tasks" style="text-decoration: none;">
             <div>
             <span class="project-name" >{{.Name}}</span>
           <span class="project-id">ID: {{.ID}}</span>
@@ -48,6 +50,7 @@
                     Delete
                 </button> 
             </div>
+</a>
             </div>
         </li>
         {{end}}
