@@ -123,8 +123,6 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 
 		l.DebugContext(r.Context(), "hello project: "+id)
 
-		//accept ws connection?
-
 		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
 
 		tmpl.Execute(w, struct {
