@@ -11,7 +11,6 @@
 <!--   const socket = new WebSocket('/ws'); -->
 <!-- </script> -->
   <link rel="stylesheet" type="text/css" href="styles_project.css">
-  <link rel="stylesheet" type="text/css" href="styles_dashboard.css">
 </head>
 <body>
   <header>
@@ -37,7 +36,8 @@
 
             <!-- TODO: this is bad in 2 ways one, back button will not work, second it seems that the called paged is not loaded in browser context -->
     <!-- <div  hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain" hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws"> -->
-    <div  hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
+    <!-- <div  hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws"> -->
+    <div>
               <a href="/projects/{{ .ID }}/tasks" style="text-decoration: none;">
             <div>
             <span class="project-name" >{{.Name}}</span>

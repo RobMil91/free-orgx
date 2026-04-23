@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 )
@@ -140,6 +142,34 @@ func ProjectTasksEvents(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) f
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		l.DebugContext(r.Context(), fmt.Sprintf("attempt to subscribe to task events for project %s", id))
+
+		//TODO: ws connection is dual -> need to pass consumer and producer
+		var upgrader = websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			l.ErrorContext(r.Context(), err.Error())
+			return
+		}
+
+		defer conn.Close()
+
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				l.ErrorContext(r.Context(), err.Error())
+				break
+			}
+
+			resp := map[string]any{
+				"echo": string(msg),
+			}
+
+			conn.WriteJSON(resp)
+		}
 	}
 }
 
