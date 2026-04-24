@@ -138,8 +138,17 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 	}
 }
 
-func ProjectTasksEvents(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := auth(r, u)
+		if err != nil {
+			l.DebugContext(r.Context(), "user login failed")
+			w.Write([]byte("Session Validation failed"))
+			return
+		}
+
+		l.DebugContext(r.Context(), fmt.Sprintf("user %s attempt ws connect", user.Name))
+
 		id := r.PathValue("id")
 		l.DebugContext(r.Context(), fmt.Sprintf("attempt to subscribe to task events for project %s", id))
 
@@ -154,6 +163,7 @@ func ProjectTasksEvents(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) f
 			l.ErrorContext(r.Context(), err.Error())
 			return
 		}
+		l.DebugContext(r.Context(), "successfull websocket connection")
 
 		defer conn.Close()
 
