@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -181,6 +182,11 @@ func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) fu
 			conn.WriteJSON(resp)
 		}
 	}
+}
+
+type WebSocketMsg struct {
+	Authorization string
+	Content       io.Reader
 }
 
 func LoginSubmit(
