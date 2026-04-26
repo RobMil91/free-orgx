@@ -19,6 +19,7 @@ import (
 
 var _ ports.UserRepo = (*SQLiteAdapter)(nil)
 var _ ports.ProjectRepo = (*SQLiteAdapter)(nil)
+var _ ports.TasksRepo = (*SQLiteAdapter)(nil)
 
 type SQLiteAdapter struct {
 	Conn *sql.DB

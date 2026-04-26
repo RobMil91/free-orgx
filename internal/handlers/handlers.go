@@ -112,7 +112,7 @@ func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
 	return user, nil
 }
 
-func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo, t ports.TasksRepo) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := auth(r, u)
 		if err != nil {
@@ -128,14 +128,14 @@ func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) 
 
 		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
 
-		tmpl.Execute(w, struct {
-			ID string
-		}{
-			ID: id,
-		})
+		tasks, err := t.LoadSnapshot(r.Context(), id)
+		if err != nil {
+			l.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
+			http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
+			return
+		}
 
-		//open web socket connection?
-		//probably except in other handler
+		tmpl.Execute(w, tasks)
 	}
 }
 
@@ -364,15 +364,4 @@ func AdminCreateUserHandler(l *slog.Logger, db ports.UserRepo) func(w http.Respo
 		l.Info(fmt.Sprintf("admin %s created user %s", user.Name, username))
 		w.Write([]byte(fmt.Sprintf("User '%s' created successfully", username)))
 	}
-}
-
-type TaskHandler struct {
-}
-
-func (t *TaskHandler) HandleCreateTask() {
-
-}
-
-func (t *TaskHandler) HandleUpdateTask() {
-
 }
