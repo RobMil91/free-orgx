@@ -7,9 +7,6 @@
   <script src="/htmx.min.js"></script>
   <script src="/htmx.ws.js"></script>
 
-<!-- <script> -->
-<!--   const socket = new WebSocket('/ws'); -->
-<!-- </script> -->
   <link rel="stylesheet" type="text/css" href="styles_project.css">
 </head>
 <body>
@@ -30,14 +27,10 @@
       <div class="main" id="pagemain">
       <h2>Your Projects</h2>
       {{if .Projects}}
-      <ul  class="project-list">
+      <ul id="projects"  class="project-list">
         {{range .Projects}}
         <li class="project-item">
 
-            <!-- TODO: this is bad in 2 ways one, back button will not work, second it seems that the called paged is not loaded in browser context -->
-    <!-- <div  hx-get="/projects/{{ .ID }}/tasks" hx-target="#pagemain" hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws"> -->
-    <!-- <div  hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws"> -->
-    <div>
               <a href="/projects/{{ .ID }}/tasks" style="text-decoration: none;">
             <div>
             <span class="project-name" >{{.Name}}</span>
@@ -59,6 +52,7 @@
       <div class="empty-state">No projects yet. Create one above!</div>
       {{end}}
 
+        <div>
     <form
      hx-post="/project/create"
       hx-trigger="submit"
@@ -67,9 +61,7 @@
     <input type="text" name="name" placeholder="Enter project name" required>
     <button type="submit"> Create </button>
         </form>
-
-    </div>
-      <!-- </div> -->
+</div>
   </main>
 </body>
 </html>
