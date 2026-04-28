@@ -112,7 +112,12 @@ func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
 	return user, nil
 }
 
-func ProjectTasksHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo, t ports.TasksRepo) func(w http.ResponseWriter, r *http.Request) {
+func ProjectTasksHandler(
+	l *slog.Logger,
+	u ports.UserRepo,
+	p ports.ProjectRepo,
+	t ports.TasksRepo,
+) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := auth(r, u)
 		if err != nil {
