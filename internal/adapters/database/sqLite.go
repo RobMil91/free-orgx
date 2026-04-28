@@ -103,6 +103,21 @@ func (s *SQLiteAdapter) CreateTables() error {
 		return err
 	}
 
+	createTasksTable := `
+	CREATE TABLE IF NOT EXISTS tasks (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		description TEXT,
+		project_id TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (project_id) REFERENCES projects(id)
+	);`
+
+	_, err = s.Conn.Exec(createTasksTable)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
