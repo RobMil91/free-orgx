@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -33,10 +32,6 @@ func setupDBForHandlerTest(t *testing.T) (*database.SQLiteAdapter, func()) {
 }
 
 func TestLoginHandler_Real(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/login.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
-
 	_, cleanup := setupDBForHandlerTest(t)
 	defer cleanup()
 
@@ -116,9 +111,6 @@ func TestLogoutHandler_InvalidSession_Real(t *testing.T) {
 }
 
 func TestProjectHandler_Real(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/project.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
 
 	db, cleanup := setupDBForHandlerTest(t)
 	defer cleanup()
@@ -331,9 +323,6 @@ func TestCreateProjectHandler_InvalidSession_Real(t *testing.T) {
 }
 
 func TestAdminUsersHandler_Real(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/admin_users.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
 
 	db, cleanup := setupDBForHandlerTest(t)
 	defer cleanup()
@@ -585,9 +574,6 @@ func (m *mockProjectRepo) DeleteProject(ctx context.Context, id string) error {
 }
 
 func TestProjectHandler_WithProjects(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/project.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
 
 	userRepo := &mockUserRepo{
 		users: map[string]ports.User{
@@ -656,9 +642,6 @@ func TestCreateProjectHandler_WithMock(t *testing.T) {
 }
 
 func TestAdminUsersHandler_WithMock(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/admin_users.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
 
 	userRepo := &mockUserRepo{
 		users: map[string]ports.User{
@@ -765,9 +748,6 @@ func (m *mockProjectRepoWithError) DeleteProject(ctx context.Context, id string)
 var _ ports.ProjectRepo = (*mockProjectRepoWithError)(nil)
 
 func TestProjectHandler_GetProjectsError(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/project.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
 
 	userRepo := &mockUserRepo{
 		users: map[string]ports.User{
@@ -838,9 +818,6 @@ func (m *mockUserRepoWithGetAllError) GetAll(ctx context.Context) ([]ports.User,
 var _ ports.UserRepo = (*mockUserRepoWithGetAllError)(nil)
 
 func TestAdminUsersHandler_GetAllError(t *testing.T) {
-	if _, err := os.Stat("internal/adapters/htmlx/admin_users.html"); os.IsNotExist(err) {
-		t.Skip("skipping test: HTML templates not accessible from package directory")
-	}
 
 	userRepo := &mockUserRepoWithGetAllError{
 		mockUserRepo: mockUserRepo{

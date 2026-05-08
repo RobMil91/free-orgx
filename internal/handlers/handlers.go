@@ -18,6 +18,53 @@ const (
 	htmxPath        = "static/"
 )
 
+type ProjectHandlerS struct {
+	TemplatePath string
+	Logger       *slog.Logger
+
+	UserRepo    ports.UserRepo
+	ProjectRepo ports.ProjectRepo
+}
+
+func NewProjectHandler(path string, l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) *ProjectHandlerS {
+	return &ProjectHandlerS{
+		TemplatePath: path,
+		Logger:       l,
+		UserRepo:     u,
+		ProjectRepo:  p,
+	}
+}
+
+func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(SessionCookieID)
+	if err != nil {
+		w.Write([]byte("Please login first"))
+		return
+	}
+
+	user, err := p.UserRepo.IsValid(r.Context(), c.Value)
+	if err != nil {
+		w.Write([]byte("Session invalid, please login again"))
+		return
+	}
+
+	projects, err := p.ProjectRepo.GetProjectsByOwner(r.Context(), user.Name)
+	if err != nil {
+		p.Logger.Error("failed to get projects", "error", err)
+	}
+
+	template := template.Must(template.ParseFiles(htmxPath + "project.html"))
+	template.Execute(w, struct {
+		Username string
+		Projects []models.Project
+		IsAdmin  bool
+	}{
+		Username: user.Name,
+		Projects: projects,
+		IsAdmin:  user.Role == ports.RoleAdmin,
+	})
+}
+
 func TasksHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Debug("reached tasks handler")
@@ -28,7 +75,6 @@ func TasksHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 
 func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached login handler")
 		tmpl := template.Must(template.ParseFiles(htmxPath + "login.html"))
 		tmpl.Execute(w, nil)
 	}
