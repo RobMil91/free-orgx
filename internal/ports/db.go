@@ -72,6 +72,7 @@ type TaskEvent struct {
 
 type TasksRepo interface {
 	LoadSnapshot(ctx context.Context, project_id string) ([]Task, error)
+	CreateSnapshot(ctx context.Context, projectID string, tasks []Task) error
 }
 
 type NewTask struct {
