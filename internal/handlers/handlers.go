@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -41,16 +42,24 @@ func NewProjectHandler(path string,
 	}
 }
 
-func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
+func (p *ProjectHandlerS) authUser(w http.ResponseWriter, r *http.Request) (*ports.User, error) {
 	c, err := r.Cookie(SessionCookieID)
 	if err != nil {
-		w.Write([]byte("Please login first"))
-		return
+		return nil, errors.New("Please Login first")
 	}
 
 	user, err := p.UserRepo.IsValid(r.Context(), c.Value)
 	if err != nil {
-		w.Write([]byte("Session invalid, please login again"))
+		return nil, errors.New("Session invalid, please login again")
+	}
+
+	return user, nil
+}
+
+func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
+	user, err := p.authUser(w, r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
 		return
 	}
 
@@ -77,6 +86,7 @@ func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Reque
 func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL == nil {
 		http.Error(w, "no url", 400)
+		return
 	}
 
 	f, ok := p.EndpointMapping[r.URL.String()]
@@ -294,46 +304,39 @@ func LoginSubmit(
 	}
 }
 
-func CreateProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached create project handler")
+func (p *ProjectHandlerS) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
+	p.Logger.DebugContext(r.Context(), "reached create project handler")
 
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
-
-		user, err := userRepo.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
-
-		projectName := r.FormValue("name")
-		if projectName == "" {
-			w.Write([]byte("Project name is required"))
-			return
-		}
-
-		project, err := projectRepo.CreateProject(r.Context(), projectName, user.Name)
-		if err != nil {
-			l.Error("failed to create project", "error", err, "user", user.Name)
-			w.Write([]byte("Failed to create project"))
-			return
-		}
-
-		//TODO: send back a piece of html that resembles the project
-		tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
-		tmpl.Execute(w, struct {
-			ID   string
-			Name string
-		}{
-			ID:   project.ID,
-			Name: project.Name,
-		})
-
+	user, err := p.authUser(w, r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
 	}
+
+	//not needed since auth gives me user...
+	projectName := r.FormValue("name")
+	if projectName == "" {
+		w.Write([]byte("Project name is required"))
+		return
+	}
+
+	project, err := p.ProjectRepo.CreateProject(r.Context(), projectName, user.Name)
+	if err != nil {
+		p.Logger.Error("failed to create project", "error", err, "user", user.Name)
+		w.Write([]byte("Failed to create project"))
+		return
+	}
+
+	//TODO: send back a piece of html that resembles the project
+	tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
+	tmpl.Execute(w, struct {
+		ID   string
+		Name string
+	}{
+		ID:   project.ID,
+		Name: project.Name,
+	})
+
 }
 
 func DeleteProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {

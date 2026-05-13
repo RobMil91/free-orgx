@@ -56,7 +56,8 @@ func main() {
 	)
 
 	projectHandler.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
-		"/project": projectHandler.HandleGetProjects,
+		"/project":        projectHandler.HandleGetProjects,
+		"/project/create": projectHandler.CreateProjectHandler,
 	}
 
 	for k := range projectHandler.EndpointMapping {
@@ -66,7 +67,7 @@ func main() {
 	mux.HandleFunc("/login", handlers.LoginHandler(logger))
 	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
 	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
-	mux.HandleFunc("/project/create", handlers.CreateProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
+	// mux.HandleFunc("/project/create", handlers.CreateProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	mux.HandleFunc("/project/delete/{id}", handlers.DeleteProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
