@@ -48,11 +48,20 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/project", handlers.NewProjectHandler(htmxPath,
+	projectHandler := handlers.NewProjectHandler(htmxPath,
 		logger,
 		adapters.UserRep,
 		adapters.ProjectRep,
-	))
+		map[string]func(w http.ResponseWriter, r *http.Request){},
+	)
+
+	projectHandler.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
+		"/project": projectHandler.HandleGetProjects,
+	}
+
+	for k := range projectHandler.EndpointMapping {
+		mux.Handle(k, projectHandler)
+	}
 
 	mux.HandleFunc("/login", handlers.LoginHandler(logger))
 	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))

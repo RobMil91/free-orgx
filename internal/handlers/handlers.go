@@ -22,20 +22,26 @@ type ProjectHandlerS struct {
 	TemplatePath string
 	Logger       *slog.Logger
 
-	UserRepo    ports.UserRepo
-	ProjectRepo ports.ProjectRepo
+	UserRepo        ports.UserRepo
+	ProjectRepo     ports.ProjectRepo
+	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
 }
 
-func NewProjectHandler(path string, l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) *ProjectHandlerS {
+func NewProjectHandler(path string,
+	l *slog.Logger,
+	u ports.UserRepo,
+	p ports.ProjectRepo,
+	e map[string]func(w http.ResponseWriter, r *http.Request)) *ProjectHandlerS {
 	return &ProjectHandlerS{
-		TemplatePath: path,
-		Logger:       l,
-		UserRepo:     u,
-		ProjectRepo:  p,
+		TemplatePath:    path,
+		Logger:          l,
+		UserRepo:        u,
+		ProjectRepo:     p,
+		EndpointMapping: e,
 	}
 }
 
-func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie(SessionCookieID)
 	if err != nil {
 		w.Write([]byte("Please login first"))
@@ -51,7 +57,10 @@ func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	projects, err := p.ProjectRepo.GetProjectsByOwner(r.Context(), user.Name)
 	if err != nil {
 		p.Logger.Error("failed to get projects", "error", err)
+		return
 	}
+
+	p.Logger.DebugContext(r.Context(), "show project")
 
 	template := template.Must(template.ParseFiles(htmxPath + "project.html"))
 	template.Execute(w, struct {
@@ -63,6 +72,20 @@ func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Projects: projects,
 		IsAdmin:  user.Role == ports.RoleAdmin,
 	})
+}
+
+func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL == nil {
+		http.Error(w, "no url", 400)
+	}
+
+	f, ok := p.EndpointMapping[r.URL.String()]
+	if !ok {
+		http.Error(w, "no such endpoint", 404)
+		return
+	}
+
+	f(w, r)
 }
 
 func TasksHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
