@@ -95,7 +95,7 @@ func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id != "" {
 		if lastSlash := strings.LastIndex(endpoint, "/"); lastSlash != -1 {
-			baseName := endpoint[lastSlash+1:]
+			baseName := endpoint[:lastSlash+1]
 			endpoint = baseName + "{id}"
 		}
 	}
