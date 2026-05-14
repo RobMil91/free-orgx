@@ -48,21 +48,24 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	projectHandler := handlers.NewProjectHandler(htmxPath,
+	HandlerHTML := handlers.NewProjectHandler(htmxPath,
 		logger,
 		adapters.UserRep,
 		adapters.ProjectRep,
+		adapters.TaskRepo,
 		map[string]func(w http.ResponseWriter, r *http.Request){},
 	)
 
-	projectHandler.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
-		"/project":             projectHandler.HandleGetProjects,
-		"/project/create":      projectHandler.CreateProjectHandler,
-		"/project/delete/{id}": projectHandler.DeleteProjectHandler,
+	HandlerHTML.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
+		"/project":             HandlerHTML.HandleGetProjects,
+		"/project/create":      HandlerHTML.CreateProjectHandler,
+		"/project/delete/{id}": HandlerHTML.DeleteProjectHandler,
+
+		"/projects/{id}/tasks": HandlerHTML.ProjectTasksHandler,
 	}
 
-	for k := range projectHandler.EndpointMapping {
-		mux.Handle(k, projectHandler)
+	for k := range HandlerHTML.EndpointMapping {
+		mux.Handle(k, HandlerHTML)
 	}
 
 	mux.HandleFunc("/login", handlers.LoginHandler(logger))
@@ -71,12 +74,7 @@ func main() {
 	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
 
-	mux.HandleFunc("/projects/{id}/tasks", handlers.ProjectTasksHandler(
-		logger,
-		adapters.UserRep,
-		adapters.ProjectRep,
-		adapters.TaskRepo))
-	mux.HandleFunc("/projects/{id}/ws", handlers.TasksTopicHandler(logger, adapters.UserRep, nil))
+	mux.HandleFunc("/projects/{id}/ws", handlers.TasksTopicHandler(logger, adapters.UserRep, adapters.ProjectRep))
 
 	mux.Handle("/", http.FileServer(http.Dir("./static")))
 

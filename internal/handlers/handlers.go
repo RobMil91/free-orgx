@@ -26,6 +26,7 @@ type Project struct {
 
 	UserRepo        ports.UserRepo
 	ProjectRepo     ports.ProjectRepo
+	TasksRepo       ports.TasksRepo
 	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -33,12 +34,15 @@ func NewProjectHandler(path string,
 	l *slog.Logger,
 	u ports.UserRepo,
 	p ports.ProjectRepo,
+	t ports.TasksRepo,
 	e map[string]func(w http.ResponseWriter, r *http.Request)) *Project {
 	return &Project{
-		TemplatePath:    path,
-		Logger:          l,
-		UserRepo:        u,
-		ProjectRepo:     p,
+		TemplatePath: path,
+		Logger:       l,
+		UserRepo:     u,
+		ProjectRepo:  p,
+		TasksRepo:    t,
+
 		EndpointMapping: e,
 	}
 }
@@ -94,14 +98,12 @@ func (p *Project) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	id := r.PathValue("id")
 	if id != "" {
-		if lastSlash := strings.LastIndex(endpoint, "/"); lastSlash != -1 {
-			baseName := endpoint[:lastSlash+1]
-			endpoint = baseName + "{id}"
-		}
+		endpoint = strings.Replace(endpoint, id, "{id}", 1)
 	}
 
-	p.Logger.DebugContext(r.Context(), endpoint, id)
+	p.Logger.DebugContext(r.Context(), endpoint)
 
+	//todo: this string compare is bullshit. i kind of need sub routes.
 	f, ok := p.EndpointMapping[endpoint]
 	if !ok {
 		p.Logger.DebugContext(r.Context(), fmt.Sprintf("did not get url %s", r.URL.String()))
@@ -205,36 +207,29 @@ func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
 	return user, nil
 }
 
-func ProjectTasksHandler(
-	l *slog.Logger,
-	u ports.UserRepo,
-	p ports.ProjectRepo,
-	t ports.TasksRepo,
-) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := auth(r, u)
-		if err != nil {
-			l.DebugContext(r.Context(), "user login failed")
-			w.Write([]byte("Session Validation failed"))
-			return
-		}
-
-		//get id of project
-		id := r.PathValue("id")
-
-		l.DebugContext(r.Context(), "hello project: "+id)
-
-		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
-
-		tasks, err := t.LoadSnapshot(r.Context(), id)
-		if err != nil {
-			l.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
-			http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
-			return
-		}
-
-		tmpl.Execute(w, tasks)
+func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := p.authUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
 	}
+
+	id := r.PathValue("id")
+
+	p.Logger.DebugContext(r.Context(), "hello project: "+id)
+
+	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "taskboard.html"))
+
+	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
+		http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
+
+	tmpl.Execute(w, tasks)
 }
 
 func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
