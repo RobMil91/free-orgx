@@ -20,7 +20,7 @@ const (
 	htmxPath        = "static/"
 )
 
-type ProjectHandlerS struct {
+type Project struct {
 	TemplatePath string
 	Logger       *slog.Logger
 
@@ -33,8 +33,8 @@ func NewProjectHandler(path string,
 	l *slog.Logger,
 	u ports.UserRepo,
 	p ports.ProjectRepo,
-	e map[string]func(w http.ResponseWriter, r *http.Request)) *ProjectHandlerS {
-	return &ProjectHandlerS{
+	e map[string]func(w http.ResponseWriter, r *http.Request)) *Project {
+	return &Project{
 		TemplatePath:    path,
 		Logger:          l,
 		UserRepo:        u,
@@ -43,7 +43,7 @@ func NewProjectHandler(path string,
 	}
 }
 
-func (p *ProjectHandlerS) authUser(r *http.Request) (*ports.User, error) {
+func (p *Project) authUser(r *http.Request) (*ports.User, error) {
 	c, err := r.Cookie(SessionCookieID)
 	if err != nil {
 		return nil, errors.New("Please Login first")
@@ -57,7 +57,7 @@ func (p *ProjectHandlerS) authUser(r *http.Request) (*ports.User, error) {
 	return user, nil
 }
 
-func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
+func (p *Project) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
 	user, err := p.authUser(r)
 	if err != nil {
 		http.Error(w, err.Error(), 401)
@@ -84,7 +84,7 @@ func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *Project) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL == nil {
 		http.Error(w, "no url", 400)
 		return
@@ -318,7 +318,7 @@ func LoginSubmit(
 	}
 }
 
-func (p *ProjectHandlerS) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Project) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
 	p.Logger.DebugContext(r.Context(), "reached create project handler")
 
 	user, err := p.authUser(r)
@@ -351,7 +351,7 @@ func (p *ProjectHandlerS) CreateProjectHandler(w http.ResponseWriter, r *http.Re
 	})
 }
 
-func (p *ProjectHandlerS) DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Project) DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 	p.Logger.Debug("reached delete  project handler")
 
 	user, err := p.authUser(r)
