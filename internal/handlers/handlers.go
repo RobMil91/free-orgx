@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 
@@ -42,7 +43,7 @@ func NewProjectHandler(path string,
 	}
 }
 
-func (p *ProjectHandlerS) authUser(w http.ResponseWriter, r *http.Request) (*ports.User, error) {
+func (p *ProjectHandlerS) authUser(r *http.Request) (*ports.User, error) {
 	c, err := r.Cookie(SessionCookieID)
 	if err != nil {
 		return nil, errors.New("Please Login first")
@@ -57,7 +58,7 @@ func (p *ProjectHandlerS) authUser(w http.ResponseWriter, r *http.Request) (*por
 }
 
 func (p *ProjectHandlerS) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
-	user, err := p.authUser(w, r)
+	user, err := p.authUser(r)
 	if err != nil {
 		http.Error(w, err.Error(), 401)
 		return
@@ -89,8 +90,21 @@ func (p *ProjectHandlerS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, ok := p.EndpointMapping[r.URL.String()]
+	endpoint := r.URL.Path
+
+	id := r.PathValue("id")
+	if id != "" {
+		if lastSlash := strings.LastIndex(endpoint, "/"); lastSlash != -1 {
+			baseName := endpoint[lastSlash+1:]
+			endpoint = baseName + "{id}"
+		}
+	}
+
+	p.Logger.DebugContext(r.Context(), endpoint, id)
+
+	f, ok := p.EndpointMapping[endpoint]
 	if !ok {
+		p.Logger.DebugContext(r.Context(), fmt.Sprintf("did not get url %s", r.URL.String()))
 		http.Error(w, "no such endpoint", 404)
 		return
 	}
@@ -307,7 +321,7 @@ func LoginSubmit(
 func (p *ProjectHandlerS) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
 	p.Logger.DebugContext(r.Context(), "reached create project handler")
 
-	user, err := p.authUser(w, r)
+	user, err := p.authUser(r)
 	if err != nil {
 		http.Error(w, err.Error(), 401)
 		return
@@ -327,7 +341,6 @@ func (p *ProjectHandlerS) CreateProjectHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	//TODO: send back a piece of html that resembles the project
 	tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
 	tmpl.Execute(w, struct {
 		ID   string
@@ -336,33 +349,24 @@ func (p *ProjectHandlerS) CreateProjectHandler(w http.ResponseWriter, r *http.Re
 		ID:   project.ID,
 		Name: project.Name,
 	})
-
 }
 
-func DeleteProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached delete  project handler")
+func (p *ProjectHandlerS) DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
+	p.Logger.Debug("reached delete  project handler")
 
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
+	user, err := p.authUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
 
-		user, err := userRepo.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
+	p.Logger.Debug("command: delete id " + r.PathValue("id"))
 
-		l.Debug("delete id " + r.PathValue("id"))
-
-		err = projectRepo.DeleteProject(r.Context(), r.PathValue("id"))
-		if err != nil {
-			l.Error("failed to create project", "error", err, "user", user.Name)
-			w.Write([]byte("Failed to create project"))
-			return
-		}
+	err = p.ProjectRepo.DeleteProject(r.Context(), r.PathValue("id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		p.Logger.Error("failed to create project", "error", err, "user", user.Name)
+		return
 	}
 }
 
