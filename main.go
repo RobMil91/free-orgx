@@ -67,7 +67,6 @@ func main() {
 	mux.HandleFunc("/login", handlers.LoginHandler(logger))
 	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
 	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
-	// mux.HandleFunc("/project/create", handlers.CreateProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	mux.HandleFunc("/project/delete/{id}", handlers.DeleteProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
 	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
