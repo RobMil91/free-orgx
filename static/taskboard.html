@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Board</title>
+  <link rel="stylesheet" type="text/css" href="/styles_project.css">
+  <link rel="stylesheet" type="text/css" href="/styles_taskboard.css">
+  <script src="/htmx.min.js"></script>
+  <script src="/htmx.ws.js"></script>
+</head>
+  <header>
+    <div>
+    <a href="/" class="logo">Free Orgx</a>
+      </div>
+    <div>
+      <span class="user-info">{{.Username}}</span>
+      {{if .IsAdmin}}
+      <a href="/users" class="nav-btn primary">Manage Users</a>
+      {{end}}
+      <a href="/project" class="nav-btn primary" >Projects</a>
+      <a href="/logout" class="nav-btn">Logout</a>
+    </div>
+  </header>
+  <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
+  <!-- <body> -->
+    <main class="board">
+        <div class="columns">
+            <div class="column" data-status="todo">
+                <div class="column-header">
+                    <div class="column-title">
+                        <span class="column-icon"></span>
+                        <h2>To Do</h2>
+                    </div>
+                    <span class="column-count" data-count="todo">0</span>
+                </div>
+                <div class="column-body" data-column="todo"></div>
+            </div>
+
+            <div class="column" data-status="in-progress">
+                <div class="column-header">
+                    <div class="column-title">
+                        <span class="column-icon"></span>
+                        <h2>In Progress</h2>
+                    </div>
+                    <span class="column-count" data-count="in-progress">0</span>
+                </div>
+                <div class="column-body" data-column="in-progress"></div>
+            </div>
+            <div class="column" data-status="done">
+                <div class="column-header">
+                    <div class="column-title">
+                        <span class="column-icon"></span>
+                        <h2>Done</h2>
+                    </div>
+                    <span class="column-count" data-count="done">0</span>
+                </div>
+                <div class="column-body" data-column="done"></div>
+            </div>
+        </div>
+      <a href="/projects/{{ .ID }}/tasks/create" class="btn btn-secondary">Create</a>
+    </main>
+</body>
+</html>

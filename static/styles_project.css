@@ -29,7 +29,7 @@
     .nav-btn.primary { background: #007bff; }
     .nav-btn.primary:hover { background: #0056b3; }
     main {
-      max-width: 800px;
+      max-width: 1800px;
       margin: 2rem auto;
       padding: 0 1rem;
     }
@@ -101,3 +101,11 @@
       padding: 2rem;
       color: #999;
     }
+
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background-color: #333; /* change background color on hover */
+}

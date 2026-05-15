@@ -1,10 +1,15 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log/slog"
 	"net/http"
+	"strings"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
@@ -15,9 +20,110 @@ const (
 	htmxPath        = "static/"
 )
 
+type Project struct {
+	TemplatePath string
+	Logger       *slog.Logger
+
+	UserRepo        ports.UserRepo
+	ProjectRepo     ports.ProjectRepo
+	TasksRepo       ports.TasksRepo
+	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
+}
+
+func NewProjectHandler(path string,
+	l *slog.Logger,
+	u ports.UserRepo,
+	p ports.ProjectRepo,
+	t ports.TasksRepo,
+	e map[string]func(w http.ResponseWriter, r *http.Request)) *Project {
+	return &Project{
+		TemplatePath: path,
+		Logger:       l,
+		UserRepo:     u,
+		ProjectRepo:  p,
+		TasksRepo:    t,
+
+		EndpointMapping: e,
+	}
+}
+
+func (p *Project) authUser(r *http.Request) (*ports.User, error) {
+	c, err := r.Cookie(SessionCookieID)
+	if err != nil {
+		return nil, errors.New("Please Login first")
+	}
+
+	user, err := p.UserRepo.IsValid(r.Context(), c.Value)
+	if err != nil {
+		return nil, errors.New("Session invalid, please login again")
+	}
+
+	return user, nil
+}
+
+func (p *Project) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
+	user, err := p.authUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
+
+	projects, err := p.ProjectRepo.GetProjectsByOwner(r.Context(), user.Name)
+	if err != nil {
+		p.Logger.Error("failed to get projects", "error", err)
+		return
+	}
+
+	p.Logger.DebugContext(r.Context(), "show project")
+
+	template := template.Must(template.ParseFiles(htmxPath + "project.html"))
+	template.Execute(w, struct {
+		Username string
+		Projects []models.Project
+		IsAdmin  bool
+	}{
+		Username: user.Name,
+		Projects: projects,
+		IsAdmin:  user.Role == ports.RoleAdmin,
+	})
+}
+
+func (p *Project) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL == nil {
+		http.Error(w, "no url", 400)
+		return
+	}
+
+	endpoint := r.URL.Path
+
+	id := r.PathValue("id")
+	if id != "" {
+		endpoint = strings.Replace(endpoint, id, "{id}", 1)
+	}
+
+	p.Logger.DebugContext(r.Context(), endpoint)
+
+	//todo: this string compare is bullshit. i kind of need sub routes.
+	f, ok := p.EndpointMapping[endpoint]
+	if !ok {
+		p.Logger.DebugContext(r.Context(), fmt.Sprintf("did not get url %s", r.URL.String()))
+		http.Error(w, "no such endpoint", 404)
+		return
+	}
+
+	f(w, r)
+}
+
+func TasksHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Debug("reached tasks handler")
+		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
+		tmpl.Execute(w, nil)
+	}
+}
+
 func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached login handler")
 		tmpl := template.Must(template.ParseFiles(htmxPath + "login.html"))
 		tmpl.Execute(w, nil)
 	}
@@ -87,6 +193,146 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 	}
 }
 
+func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
+	c, err := r.Cookie(SessionCookieID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token in request %w", err)
+	}
+
+	user, err := u.IsValid(r.Context(), c.Value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid session  %w", err)
+	}
+
+	return user, nil
+}
+
+func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
+	_, err := p.authUser(r)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	id := r.PathValue("id")
+
+	p.Logger.DebugContext(r.Context(), "hello project: "+id)
+
+	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
+		http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
+
+	data := map[string]any{
+		"ID": id,
+	}
+	if len(tasks) == 0 {
+		data["Tasks"] = nil
+	}
+
+	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "taskboard.html"))
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, "could not append ID to template id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+}
+
+func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
+	_, err := p.authUser(r)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	id := r.PathValue("id")
+
+	p.Logger.DebugContext(r.Context(), "hello create task on project: "+id)
+
+	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
+		http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
+
+	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "create_task.html"))
+
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, "could not append ID to template id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+}
+
+type TaskBoardValues struct {
+	ID    string
+	Tasks []ports.Task
+}
+
+func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := auth(r, u)
+		if err != nil {
+			l.DebugContext(r.Context(), "user login failed")
+			w.Write([]byte("Session Validation failed"))
+			return
+		}
+
+		l.DebugContext(r.Context(), fmt.Sprintf("user %s attempt ws connect", user.Name))
+
+		id := r.PathValue("id")
+		l.DebugContext(r.Context(), fmt.Sprintf("attempt to subscribe to task events for project %s", id))
+
+		//TODO: ws connection is dual -> need to pass consumer and producer
+		var upgrader = websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			l.ErrorContext(r.Context(), err.Error())
+			return
+		}
+		l.DebugContext(r.Context(), "successfull websocket connection")
+
+		defer conn.Close()
+
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				l.ErrorContext(r.Context(), err.Error())
+				break
+			}
+
+			resp := map[string]any{
+				"echo": string(msg),
+			}
+
+			conn.WriteJSON(resp)
+		}
+	}
+}
+
+type WebSocketMsg struct {
+	Authorization string
+	Content       io.Reader
+}
+
 func LoginSubmit(
 	l *slog.Logger,
 	db ports.UserRepo,
@@ -118,72 +364,55 @@ func LoginSubmit(
 	}
 }
 
-func CreateProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached create project handler")
+func (p *Project) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
+	p.Logger.DebugContext(r.Context(), "reached create project handler")
 
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
-
-		user, err := userRepo.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
-
-		projectName := r.FormValue("name")
-		if projectName == "" {
-			w.Write([]byte("Project name is required"))
-			return
-		}
-
-		project, err := projectRepo.CreateProject(r.Context(), projectName, user.Name)
-		if err != nil {
-			l.Error("failed to create project", "error", err, "user", user.Name)
-			w.Write([]byte("Failed to create project"))
-			return
-		}
-
-		//TODO: send back a piece of html that resembles the project
-		tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
-		tmpl.Execute(w, struct {
-			ID   string
-			Name string
-		}{
-			ID:   project.ID,
-			Name: project.Name,
-		})
-
+	user, err := p.authUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
 	}
+
+	//not needed since auth gives me user...
+	projectName := r.FormValue("name")
+	if projectName == "" {
+		w.Write([]byte("Project name is required"))
+		return
+	}
+
+	project, err := p.ProjectRepo.CreateProject(r.Context(), projectName, user.Name)
+	if err != nil {
+		p.Logger.Error("failed to create project", "error", err, "user", user.Name)
+		w.Write([]byte("Failed to create project"))
+		return
+	}
+
+	tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
+	tmpl.Execute(w, struct {
+		ID   string
+		Name string
+	}{
+		ID:   project.ID,
+		Name: project.Name,
+	})
 }
 
-func DeleteProjectHandler(l *slog.Logger, userRepo ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached delete  project handler")
+func (p *Project) DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
+	p.Logger.Debug("reached delete  project handler")
 
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
+	user, err := p.authUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
 
-		user, err := userRepo.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
+	p.Logger.Debug("command: delete id " + r.PathValue("id"))
 
-		l.Debug("delete id " + r.PathValue("id"))
-
-		err = projectRepo.DeleteProject(r.Context(), r.PathValue("id"))
-		if err != nil {
-			l.Error("failed to create project", "error", err, "user", user.Name)
-			w.Write([]byte("Failed to create project"))
-			return
-		}
+	err = p.ProjectRepo.DeleteProject(r.Context(), r.PathValue("id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		p.Logger.Error("failed to create project", "error", err, "user", user.Name)
+		return
 	}
 }
 
