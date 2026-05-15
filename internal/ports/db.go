@@ -57,4 +57,34 @@ type ProjectRepo interface {
 	DeleteProject(ctx context.Context, id string) error
 }
 
+type MessageType int
+
+const (
+	CreateTask MessageType = iota
+	UpdateTask
+	DeleteTask
+)
+
+type TaskEvent struct {
+	Type      MessageType
+	EventTask Task
+}
+
+type TasksRepo interface {
+	LoadSnapshot(ctx context.Context, project_id string) ([]Task, error)
+	CreateSnapshot(ctx context.Context, projectID string, tasks []Task) error
+}
+
+type NewTask struct {
+	Name        string
+	Description string
+}
+
+type Task struct {
+	NewTask
+	ID string
+
+	Messages []string
+}
+
 var DatabaseError = errors.New("database adapter failed to execute action")

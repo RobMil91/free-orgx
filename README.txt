@@ -16,3 +16,12 @@ current ws challenge:
 this gives hope for headers
 
 export LOG_LEVEL=debug
+
+
+on new project display empty task board
+
+add create task func
+add event task func for db, that can be stored
+connect task func to button create
+
+

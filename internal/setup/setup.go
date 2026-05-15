@@ -12,12 +12,15 @@ import (
 type Adapters struct {
 	UserRep    ports.UserRepo
 	ProjectRep ports.ProjectRepo
+	TaskRepo   ports.TasksRepo
 }
 
 func Setup(cfg config.Config) (*Adapters, error) {
 	var (
 		users    ports.UserRepo
 		projects ports.ProjectRepo
+
+		taskRepo ports.TasksRepo
 	)
 
 	if cfg.RAMDB {
@@ -43,6 +46,7 @@ func Setup(cfg config.Config) (*Adapters, error) {
 
 		users = db
 		projects = db
+		taskRepo = db
 
 		slog.Info("started sqlite db (first login becomes admin)")
 	}
@@ -50,5 +54,6 @@ func Setup(cfg config.Config) (*Adapters, error) {
 	return &Adapters{
 		UserRep:    users,
 		ProjectRep: projects,
+		TaskRepo:   taskRepo,
 	}, nil
 }

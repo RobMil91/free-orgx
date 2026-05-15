@@ -13,6 +13,10 @@ import (
 	"github.com/RobMil91/free-orgx/internal/setup"
 )
 
+const (
+	htmxPath = "static/"
+)
+
 func main() {
 	cfg := config.Config{}
 
@@ -42,21 +46,40 @@ func main() {
 		Level: level,
 	}))
 
-	http.HandleFunc("/project", handlers.ProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
-	http.HandleFunc("/login", handlers.LoginHandler(logger))
-	http.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
-	http.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
-	http.HandleFunc("/project/create", handlers.CreateProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
-	http.HandleFunc("/project/delete/{id}", handlers.DeleteProjectHandler(logger, adapters.UserRep, adapters.ProjectRep))
-	http.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
-	http.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
+	mux := http.NewServeMux()
 
-	http.HandleFunc("/projects/{id}/tasks", handlers.ProjectTasksHandler(logger, adapters.UserRep, adapters.ProjectRep))
-	http.HandleFunc("/projects/{id}/ws", handlers.TasksTopicHandler(logger, adapters.UserRep, nil))
+	HandlerHTML := handlers.NewProjectHandler(htmxPath,
+		logger,
+		adapters.UserRep,
+		adapters.ProjectRep,
+		adapters.TaskRepo,
+		map[string]func(w http.ResponseWriter, r *http.Request){},
+	)
 
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	HandlerHTML.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
+		"/project":             HandlerHTML.HandleGetProjects,
+		"/project/create":      HandlerHTML.CreateProjectHandler,
+		"/project/delete/{id}": HandlerHTML.DeleteProjectHandler,
+
+		"/projects/{id}/tasks":        HandlerHTML.ProjectTasksHandler,
+		"/projects/{id}/tasks/create": HandlerHTML.CreateTaskForm,
+	}
+
+	for k := range HandlerHTML.EndpointMapping {
+		mux.Handle(k, HandlerHTML)
+	}
+
+	mux.HandleFunc("/login", handlers.LoginHandler(logger))
+	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
+	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
+	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
+	mux.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
+
+	mux.HandleFunc("/projects/{id}/ws", handlers.TasksTopicHandler(logger, adapters.UserRep, adapters.ProjectRep))
+
+	mux.Handle("/", http.FileServer(http.Dir("./static")))
 
 	portStr := fmt.Sprintf(":%s", cfg.Port)
 	logger.Info("started free orgx on port" + portStr)
-	log.Fatal(http.ListenAndServe(portStr, nil))
+	log.Fatal(http.ListenAndServe(portStr, mux))
 }
