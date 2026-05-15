@@ -48,7 +48,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <a type="button" class="btn-secondary"  href="/projects/{{ .ID }}/tasks" >Cancel</a>
+                    <a type="button" class="btn-secondary"  hx-get="/projects/{{ .ID }}/tasks" hx-target="#taskboard_content">Cancel</a>
                     <button type="submit" class="btn-primary">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />

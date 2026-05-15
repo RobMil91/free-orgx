@@ -9,6 +9,7 @@
   <script src="/htmx.min.js"></script>
   <script src="/htmx.ws.js"></script>
 </head>
+      <div id="taskboard_content">
   <header>
     <div>
     <a href="/" class="logo">Free Orgx</a>
@@ -23,8 +24,6 @@
     </div>
   </header>
   <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
-  <!-- <body> -->
-      <div id="taskboard_content">
     <main class="board">
         <div class="columns">
             <div class="column" data-status="todo">
