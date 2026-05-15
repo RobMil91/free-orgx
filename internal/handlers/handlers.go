@@ -210,6 +210,7 @@ func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
 func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := p.authUser(r)
 	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
@@ -218,8 +219,6 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 
 	p.Logger.DebugContext(r.Context(), "hello project: "+id)
 
-	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "taskboard.html"))
-
 	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
@@ -227,14 +226,29 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(tasks) == 0 {
-		tmpl.Execute(w, nil)
-	}
-
 	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
 
-	// tmpl.Execute(w, tasks)
-	tmpl.Execute(w, tasks)
+	data := map[string]any{
+		"ID": id,
+	}
+	if len(tasks) == 0 {
+		data["Tasks"] = nil
+	}
+
+	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "taskboard.html"))
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, "could not append ID to template id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+}
+
+type TaskBoardValues struct {
+	ID    string
+	Tasks []ports.Task
 }
 
 func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
