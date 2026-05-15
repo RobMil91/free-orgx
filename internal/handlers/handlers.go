@@ -246,6 +246,38 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
+	_, err := p.authUser(r)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	id := r.PathValue("id")
+
+	p.Logger.DebugContext(r.Context(), "hello create task on project: "+id)
+
+	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
+		http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
+
+	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "create_task.html"))
+
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, "could not append ID to template id: "+id, http.StatusInternalServerError)
+		return
+	}
+
+}
+
 type TaskBoardValues struct {
 	ID    string
 	Tasks []ports.Task

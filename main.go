@@ -61,7 +61,8 @@ func main() {
 		"/project/create":      HandlerHTML.CreateProjectHandler,
 		"/project/delete/{id}": HandlerHTML.DeleteProjectHandler,
 
-		"/projects/{id}/tasks": HandlerHTML.ProjectTasksHandler,
+		"/projects/{id}/tasks":        HandlerHTML.ProjectTasksHandler,
+		"/projects/{id}/tasks/create": HandlerHTML.CreateTaskForm,
 	}
 
 	for k := range HandlerHTML.EndpointMapping {

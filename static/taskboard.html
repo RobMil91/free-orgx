@@ -58,65 +58,7 @@
                 <div class="column-body" data-column="done"></div>
             </div>
         </div>
-            <button class="btn-primary" onclick="openModal()">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                New Task
-            </button>
+      <a href="/projects/{{ .ID }}/tasks/create" class="btn btn-secondary">Create</a>
     </main>
-
-    <!-- Modal -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnOverlay(event)">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Create New Task</h3>
-                <button class="modal-close" onclick="closeModal()">
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <form id="taskForm" onsubmit="createTask(event)">
-                <div class="form-group">
-                    <label for="taskTitle">Title</label>
-                    <input type="text" id="taskTitle" name="title" placeholder="Enter task title" required>
-                </div>
-                <div class="form-group">
-                    <label for="taskDescription">Description</label>
-                    <textarea id="taskDescription" name="description" placeholder="Describe the task..."></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="taskStatus">Status</label>
-                        <select id="taskStatus" name="status">
-                            <option value="todo">To Do</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="done">Done</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="taskPriority">Priority</label>
-                        <select id="taskPriority" name="priority">
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn-primary">
-                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Create Task
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
 </body>
 </html>
