@@ -9,6 +9,19 @@
   <script src="/htmx.min.js"></script>
   <script src="/htmx.ws.js"></script>
 </head>
+  <header>
+    <div>
+    <a href="/" class="logo">Free Orgx</a>
+      </div>
+    <div>
+      <span class="user-info">{{.Username}}</span>
+      {{if .IsAdmin}}
+      <a href="/users" class="nav-btn primary">Manage Users</a>
+      {{end}}
+      <a href="/project" class="nav-btn primary" >Projects</a>
+      <a href="/logout" class="nav-btn">Logout</a>
+    </div>
+  </header>
   <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
   <!-- <body> -->
     <main class="board">
