@@ -26,8 +26,6 @@
   <!-- <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws"> -->
 
   <body>
-    <!-- <div class="modal-overlay" id="modalOverlay" > -->
-        <!-- <div class="modal"> -->
             <div class="modal-header">
                 <h3>Create New Task</h3>
                 <button class="modal-close">
@@ -36,7 +34,6 @@
                     </svg>
                 </button>
             </div>
-            <!-- <form id="taskForm" htmx-post TODO> -->
             <form id="taskForm">
                 <div class="form-group">
                     <label for="taskTitle">Title</label>
@@ -66,7 +63,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-secondary" >Cancel</button>
+                    <a type="button" class="btn-secondary"  href="/projects/{{ .ID }}/tasks" >Cancel</a>
                     <button type="submit" class="btn-primary">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -75,8 +72,5 @@
                     </button>
                 </div>
             </form>
-        <!-- </div> -->
-    <!-- </div> -->
-
 </body>
 </html>
