@@ -227,8 +227,13 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(tasks) == 0 {
+		tmpl.Execute(w, nil)
+	}
+
 	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
 
+	// tmpl.Execute(w, tasks)
 	tmpl.Execute(w, tasks)
 }
 

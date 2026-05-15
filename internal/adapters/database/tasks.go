@@ -26,9 +26,9 @@ func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]p
 		tasks = append(tasks, t)
 	}
 
-	if tasks == nil {
-		tasks = []ports.Task{}
-	}
+	// if tasks == nil {
+	// 	tasks = []ports.Task{}
+	// }
 
 	return tasks, nil
 }
