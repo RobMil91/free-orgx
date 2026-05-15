@@ -24,6 +24,7 @@
   </header>
   <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
   <!-- <body> -->
+      <div id="taskboard_content">
     <main class="board">
         <div class="columns">
             <div class="column" data-status="todo">
@@ -58,7 +59,8 @@
                 <div class="column-body" data-column="done"></div>
             </div>
         </div>
-      <a href="/projects/{{ .ID }}/tasks/create" class="btn btn-secondary">Create</a>
     </main>
+      <a hx-get="/projects/{{ .ID }}/tasks/create" hx-target="#taskboard_content" class="btn btn-secondary">Create</a>
+        </div>
 </body>
 </html>
