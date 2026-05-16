@@ -94,7 +94,7 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 			projectID: "proj-2",
 			tasksRepo: &mockTasksRepo{
 				tasks: []ports.Task{
-					{NewTask: ports.NewTask{Name: "Task 1", Description: "Desc 1"}, ID: "1"},
+					{NewTask: ports.NewTask{Title: "Task 1", Description: "Desc 1"}, ID: "1"},
 				},
 			},
 			wantStatus: http.StatusOK,

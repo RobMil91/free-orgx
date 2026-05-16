@@ -46,14 +46,14 @@ func (s *SQLiteAdapter) NewEvent(
 	created := time.Now().Format(time.RFC3339)
 
 	stmt, err := s.Conn.Prepare(
-		`INSERT INTO task_events (id,event_type,created_at,deadline,user,description,status,project_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+		`INSERT INTO task_events (id,event_type,created_at,deadline,user,title,description,status,project_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not prepare project insert: %v", err))
 		return ports.DatabaseError
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(*id, t.Type, created, t.Deadline, t.User, t.Description, t.Status, project_id)
+	_, err = stmt.Exec(*id, t.Type, created, t.Deadline, t.User, t.Title, t.Description, t.Status, project_id)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not create project: %v", err))
 		return ports.DatabaseError
@@ -166,6 +166,7 @@ func (s *SQLiteAdapter) CreateTables() error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		deadline DATETIME NOT NULL,
 
+		title TEXT NOT NULL,
 		user TEXT NOT NULL,
 		description TEXT,
 		status TEXT NOT NULL,

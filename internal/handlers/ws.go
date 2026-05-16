@@ -43,6 +43,12 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		p.Logger.DebugContext(r.Context(),
+			fmt.Sprintf("retrieved via websocket message: %s, of type: %d",
+				string(msg),
+				typ,
+			))
+
 		event, err := parse(msg)
 		if err != nil {
 			p.Logger.ErrorContext(r.Context(), err.Error())
@@ -51,16 +57,15 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 		event.User = user.Name
 
+		p.Logger.DebugContext(r.Context(),
+			fmt.Sprintf("serialized to %+v",
+				event,
+			))
+
 		if err = p.EventsRepo.NewEvent(r.Context(), id, *event); err != nil {
 			p.Logger.ErrorContext(r.Context(), err.Error())
 			continue
 		}
-
-		p.Logger.DebugContext(r.Context(),
-			fmt.Sprintf("retrieved via websocket message: %s, of type: %d",
-				string(msg),
-				typ,
-			))
 
 		resp := map[string]any{
 			"echo": string(msg),

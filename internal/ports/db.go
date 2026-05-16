@@ -68,9 +68,9 @@ const (
 )
 
 type TaskEventRequest struct {
-	Type    string `json:"event-type"`
-	User    string
-	NewTask `json:"task"`
+	Type string `json:"event-type"`
+	User string
+	NewTask
 }
 
 type TaskEvent struct {
@@ -89,10 +89,10 @@ type EventStore interface {
 }
 
 type NewTask struct {
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Deadline    time.Time `json:"deadline"`
-	Status      string    `json:"status"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Deadline    string `json:"deadline"`
+	Status      string `json:"status"`
 }
 
 type Task struct {
