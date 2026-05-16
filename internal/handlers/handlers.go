@@ -267,15 +267,18 @@ func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
 
 	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
 
+	data := map[string]any{
+		"ID": id,
+	}
+
 	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "create_task.html"))
 
-	err = tmpl.Execute(w, nil)
+	err = tmpl.Execute(w, data)
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, "could not append ID to template id: "+id, http.StatusInternalServerError)
 		return
 	}
-
 }
 
 type TaskBoardValues struct {

@@ -9,6 +9,7 @@
   <script src="/htmx.min.js"></script>
   <script src="/htmx.ws.js"></script>
 </head>
+      <div id="taskboard_content">
   <header>
     <div>
     <a href="/" class="logo">Free Orgx</a>
@@ -23,7 +24,6 @@
     </div>
   </header>
   <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
-  <!-- <body> -->
     <main class="board">
         <div class="columns">
             <div class="column" data-status="todo">
@@ -58,7 +58,8 @@
                 <div class="column-body" data-column="done"></div>
             </div>
         </div>
-      <a href="/projects/{{ .ID }}/tasks/create" class="btn btn-secondary">Create</a>
     </main>
+      <a hx-get="/projects/{{ .ID }}/tasks/create" hx-target="#taskboard_content" class="btn btn-secondary">Create</a>
+        </div>
 </body>
 </html>
