@@ -57,17 +57,25 @@ type ProjectRepo interface {
 	DeleteProject(ctx context.Context, id string) error
 }
 
-type MessageType int
-
 const (
-	CreateTask MessageType = iota
-	UpdateTask
-	DeleteTask
+	CreateTask = "create"
+	UpdateTask = "update"
+
+	Todo       = "todo"
+	InProgress = "in progress"
+	Done       = "done"
+	Achieved   = "achieved"
 )
 
+type TaskEventRequest struct {
+	Type string `json:"event-type"`
+	User string
+	NewTask
+}
+
 type TaskEvent struct {
-	Type      MessageType
-	EventTask Task
+	TaskEventRequest
+	EventTime time.Time
 }
 
 type TasksRepo interface {
@@ -75,16 +83,23 @@ type TasksRepo interface {
 	CreateSnapshot(ctx context.Context, projectID string, tasks []Task) error
 }
 
+type EventStore interface {
+	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) error
+	GetEvents(ctx context.Context, project_id string) ([]TaskEvent, error)
+}
+
 type NewTask struct {
-	Name        string
-	Description string
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Deadline    string `json:"deadline"`
+	Status      string `json:"status"`
 }
 
 type Task struct {
 	NewTask
-	ID string
+	ID string `json:"id"`
 
-	Messages []string
+	// Messages []string
 }
 
 var DatabaseError = errors.New("database adapter failed to execute action")
