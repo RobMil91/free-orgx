@@ -322,6 +322,8 @@ func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) fu
 				break
 			}
 
+			l.DebugContext(r.Context(), fmt.Sprintf("retrieved via websocket message: %s", string(msg)))
+
 			resp := map[string]any{
 				"echo": string(msg),
 			}

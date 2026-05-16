@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +12,7 @@
   <body>
             <div class="modal-header">
                 <h3>Create New Task</h3>
-                <button class="modal-close">
+                <button class="modal-close" hx-get="/projects/{{ .ID }}/tasks" hx-target="#taskboard_content">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -34,22 +33,23 @@
                         <select id="taskStatus" name="status">
                             <option value="todo">To Do</option>
                             <option value="in-progress">In Progress</option>
-                            <option value="done">Done</option>
+                            <!-- <option value="done">Done</option> -->
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="taskPriority">Priority</label>
-                        <select id="taskPriority" name="priority">
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                        </select>
+                    <label for="deadline">Deadline</label>
+                    <input type="datetime-local" id="deadline" name="deadline" placeholder="Enter done time" required>
                     </div>
+
+          <!--           <div class="form-group"> -->
+          <!-- <input type="hidden" id="cookie" name="session-cookie" value={{ .AUTH }}> -->
+          <!--           </div> -->
                 </div>
 
                 <div class="modal-actions">
                     <a type="button" class="btn-secondary"  hx-get="/projects/{{ .ID }}/tasks" hx-target="#taskboard_content">Cancel</a>
-                    <button type="submit" class="btn-primary">
+
+                    <button type="submit" class="btn-primary" id="taskForm" ws-send>
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
