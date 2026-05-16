@@ -58,16 +58,26 @@ type ProjectRepo interface {
 }
 
 type MessageType int
+type StatusType int
 
 const (
 	CreateTask MessageType = iota
 	UpdateTask
-	DeleteTask
+
+	Todo StatusType = iota
+	InProgress
+	Done
+	Achieved
 )
 
-type TaskEvent struct {
+type TaskEventRequest struct {
 	Type      MessageType
 	EventTask Task
+}
+
+type TaskEvent struct {
+	TaskEventRequest
+	EventTime time.Time
 }
 
 type TasksRepo interface {
@@ -75,16 +85,23 @@ type TasksRepo interface {
 	CreateSnapshot(ctx context.Context, projectID string, tasks []Task) error
 }
 
+type EventStore interface {
+	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) (TaskEvent, error)
+	GetEvents(ctx context.Context, project_id string) ([]TaskEvent, error)
+}
+
 type NewTask struct {
 	Name        string
 	Description string
+	Deadline    time.Time
+	Status      StatusType
 }
 
 type Task struct {
 	NewTask
 	ID string
 
-	Messages []string
+	// Messages []string
 }
 
 var DatabaseError = errors.New("database adapter failed to execute action")

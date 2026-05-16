@@ -4,12 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/gorilla/websocket"
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
@@ -284,58 +281,6 @@ func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
 type TaskBoardValues struct {
 	ID    string
 	Tasks []ports.Task
-}
-
-func TasksTopicHandler(l *slog.Logger, u ports.UserRepo, p ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user, err := auth(r, u)
-		if err != nil {
-			l.DebugContext(r.Context(), "user login failed")
-			w.Write([]byte("Session Validation failed"))
-			return
-		}
-
-		l.DebugContext(r.Context(), fmt.Sprintf("user %s attempt ws connect", user.Name))
-
-		id := r.PathValue("id")
-		l.DebugContext(r.Context(), fmt.Sprintf("attempt to subscribe to task events for project %s", id))
-
-		//TODO: ws connection is dual -> need to pass consumer and producer
-		var upgrader = websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				return true
-			},
-		}
-		conn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			l.ErrorContext(r.Context(), err.Error())
-			return
-		}
-		l.DebugContext(r.Context(), "successfull websocket connection")
-
-		defer conn.Close()
-
-		for {
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				l.ErrorContext(r.Context(), err.Error())
-				break
-			}
-
-			l.DebugContext(r.Context(), fmt.Sprintf("retrieved via websocket message: %s", string(msg)))
-
-			resp := map[string]any{
-				"echo": string(msg),
-			}
-
-			conn.WriteJSON(resp)
-		}
-	}
-}
-
-type WebSocketMsg struct {
-	Authorization string
-	Content       io.Reader
 }
 
 func LoginSubmit(

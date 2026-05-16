@@ -26,3 +26,6 @@ connect task func to button create
 
 ws connect needs to be encrypted. do not allow otherwise.
 need a self signed cert and ca setup...
+
+
+handlers needs to be moved to adapters.

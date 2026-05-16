@@ -63,6 +63,8 @@ func main() {
 
 		"/projects/{id}/tasks":        HandlerHTML.ProjectTasksHandler,
 		"/projects/{id}/tasks/create": HandlerHTML.CreateTaskForm,
+
+		"/projects/{id}/ws": HandlerHTML.TasksTopicHandler,
 	}
 
 	for k := range HandlerHTML.EndpointMapping {
@@ -74,8 +76,6 @@ func main() {
 	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
-
-	mux.HandleFunc("/projects/{id}/ws", handlers.TasksTopicHandler(logger, adapters.UserRep, adapters.ProjectRep))
 
 	mux.Handle("/", http.FileServer(http.Dir("./static")))
 
