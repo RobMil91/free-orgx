@@ -24,4 +24,5 @@ add create task func
 add event task func for db, that can be stored
 connect task func to button create
 
-
+ws connect needs to be encrypted. do not allow otherwise.
+need a self signed cert and ca setup...
