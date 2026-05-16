@@ -20,9 +20,46 @@ import (
 var _ ports.UserRepo = (*SQLiteAdapter)(nil)
 var _ ports.ProjectRepo = (*SQLiteAdapter)(nil)
 var _ ports.TasksRepo = (*SQLiteAdapter)(nil)
+var _ ports.EventStore = (*SQLiteAdapter)(nil)
 
 type SQLiteAdapter struct {
 	Conn *sql.DB
+}
+
+// GetEvents implements [ports.EventStore].
+func (s *SQLiteAdapter) GetEvents(ctx context.Context, project_id string) ([]ports.TaskEvent, error) {
+	panic("unimplemented")
+}
+
+// NewEvent implements [ports.EventStore].
+func (s *SQLiteAdapter) NewEvent(
+	ctx context.Context,
+	project_id string,
+	t ports.TaskEventRequest) error {
+
+	id, err := createRandStr(16)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not generate project id: %v", err))
+		return ports.DatabaseError
+	}
+
+	created := time.Now().Format(time.RFC3339)
+
+	stmt, err := s.Conn.Prepare(
+		`INSERT INTO task_events (id,event_type,created_at,deadline,user,description,status,project_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not prepare project insert: %v", err))
+		return ports.DatabaseError
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(*id, t.Type, created, t.Deadline, t.User, t.Description, t.Status, project_id)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not create project: %v", err))
+		return ports.DatabaseError
+	}
+
+	return nil
 }
 
 // GetAll implements [ports.UserRepo].
@@ -108,12 +145,36 @@ func (s *SQLiteAdapter) CreateTables() error {
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
 		description TEXT,
+		status TEXT NOT NULL,
 		project_id TEXT NOT NULL,
+
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		deadline DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (project_id) REFERENCES projects(id)
 	);`
 
 	_, err = s.Conn.Exec(createTasksTable)
+	if err != nil {
+		return err
+	}
+
+	eventTable := `
+	CREATE TABLE IF NOT EXISTS task_events (
+		id TEXT PRIMARY KEY,
+		event_type TEXT NOT NULL,
+
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		deadline DATETIME NOT NULL,
+
+		user TEXT NOT NULL,
+		description TEXT,
+		status TEXT NOT NULL,
+		project_id TEXT NOT NULL,
+
+		FOREIGN KEY (project_id) REFERENCES projects(id)
+	);`
+
+	_, err = s.Conn.Exec(eventTable)
 	if err != nil {
 		return err
 	}

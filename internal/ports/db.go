@@ -57,22 +57,20 @@ type ProjectRepo interface {
 	DeleteProject(ctx context.Context, id string) error
 }
 
-type MessageType int
-type StatusType int
-
 const (
-	CreateTask MessageType = iota
-	UpdateTask
+	CreateTask = "create"
+	UpdateTask = "update"
 
-	Todo StatusType = iota
-	InProgress
-	Done
-	Achieved
+	Todo       = "todo"
+	InProgress = "in progress"
+	Done       = "done"
+	Achieved   = "achieved"
 )
 
 type TaskEventRequest struct {
-	Type      MessageType
-	EventTask Task
+	Type    string `json:"event-type"`
+	User    string
+	NewTask `json:"task"`
 }
 
 type TaskEvent struct {
@@ -86,20 +84,20 @@ type TasksRepo interface {
 }
 
 type EventStore interface {
-	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) (TaskEvent, error)
+	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) error
 	GetEvents(ctx context.Context, project_id string) ([]TaskEvent, error)
 }
 
 type NewTask struct {
-	Name        string
-	Description string
-	Deadline    time.Time
-	Status      StatusType
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Deadline    time.Time `json:"deadline"`
+	Status      string    `json:"status"`
 }
 
 type Task struct {
 	NewTask
-	ID string
+	ID string `json:"id"`
 
 	// Messages []string
 }

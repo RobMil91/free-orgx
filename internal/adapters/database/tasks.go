@@ -15,6 +15,7 @@ func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]p
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var tasks []ports.Task
@@ -26,10 +27,6 @@ func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]p
 		tasks = append(tasks, t)
 	}
 
-	// if tasks == nil {
-	// 	tasks = []ports.Task{}
-	// }
-
 	return tasks, nil
 }
 
@@ -39,11 +36,6 @@ func (s *SQLiteAdapter) CreateSnapshot(ctx context.Context, projectID string, ta
 		return err
 	}
 	defer tx.Rollback()
-
-	_, err = tx.Exec(`DELETE FROM tasks WHERE project_id = ?`, projectID)
-	if err != nil {
-		return err
-	}
 
 	stmt, err := tx.Prepare(`INSERT INTO tasks (id, name, description, project_id) VALUES (?, ?, ?, ?)`)
 	if err != nil {

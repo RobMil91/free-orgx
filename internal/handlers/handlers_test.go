@@ -81,10 +81,10 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 			wantBody:   "could not retrieve snapshot for id: proj-1\n",
 		},
 		{
-			name:      "empty tasks executes template with nil",
-			cookieVal: validCookie,
-			projectID: "proj-1",
-			tasksRepo: &mockTasksRepo{tasks: []ports.Task{}},
+			name:       "empty tasks executes template with nil",
+			cookieVal:  validCookie,
+			projectID:  "proj-1",
+			tasksRepo:  &mockTasksRepo{tasks: []ports.Task{}},
 			wantStatus: http.StatusOK,
 			wantBody:   "taskboard content",
 		},
@@ -103,14 +103,20 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := handlers.NewProjectHandler(
+			p, err := handlers.NewProjectHandler(
 				tmpDir+"/",
 				logger,
 				ram,
 				ram,
 				tt.tasksRepo,
 				nil,
+				nil,
 			)
+
+			if err != nil {
+				t.Log(err.Error())
+				t.FailNow()
+			}
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/", nil)

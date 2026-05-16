@@ -48,27 +48,33 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	HandlerHTML := handlers.NewProjectHandler(htmxPath,
+	handler, err := handlers.NewProjectHandler(htmxPath,
 		logger,
 		adapters.UserRep,
 		adapters.ProjectRep,
 		adapters.TaskRepo,
+
+		adapters.EventRepo,
 		map[string]func(w http.ResponseWriter, r *http.Request){},
 	)
 
-	HandlerHTML.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
-		"/project":             HandlerHTML.HandleGetProjects,
-		"/project/create":      HandlerHTML.CreateProjectHandler,
-		"/project/delete/{id}": HandlerHTML.DeleteProjectHandler,
-
-		"/projects/{id}/tasks":        HandlerHTML.ProjectTasksHandler,
-		"/projects/{id}/tasks/create": HandlerHTML.CreateTaskForm,
-
-		"/projects/{id}/ws": HandlerHTML.TasksTopicHandler,
+	if err != nil {
+		panic(err)
 	}
 
-	for k := range HandlerHTML.EndpointMapping {
-		mux.Handle(k, HandlerHTML)
+	handler.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
+		"/project":             handler.HandleGetProjects,
+		"/project/create":      handler.CreateProjectHandler,
+		"/project/delete/{id}": handler.DeleteProjectHandler,
+
+		"/projects/{id}/tasks":        handler.ProjectTasksHandler,
+		"/projects/{id}/tasks/create": handler.CreateTaskForm,
+
+		"/projects/{id}/ws": handler.WebsocketHandler,
+	}
+
+	for k := range handler.EndpointMapping {
+		mux.Handle(k, handler)
 	}
 
 	mux.HandleFunc("/login", handlers.LoginHandler(logger))

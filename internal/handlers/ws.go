@@ -1,13 +1,15 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"github.com/RobMil91/free-orgx/internal/ports"
 	"github.com/gorilla/websocket"
 )
 
-func (p *Project) TasksTopicHandler(w http.ResponseWriter, r *http.Request) {
+func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := p.authUser(r)
 	if err != nil {
 		http.Error(w, err.Error(), 401)
@@ -30,23 +32,53 @@ func (p *Project) TasksTopicHandler(w http.ResponseWriter, r *http.Request) {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		return
 	}
-	p.Logger.DebugContext(r.Context(), "successfull websocket connection")
+	p.Logger.DebugContext(r.Context(), "successful websocket connection")
 
 	defer conn.Close()
 
 	for {
-		_, msg, err := conn.ReadMessage()
+		typ, msg, err := conn.ReadMessage()
 		if err != nil {
 			p.Logger.ErrorContext(r.Context(), err.Error())
 			break
 		}
 
-		p.Logger.DebugContext(r.Context(), fmt.Sprintf("retrieved via websocket message: %s", string(msg)))
+		event, err := parse(msg)
+		if err != nil {
+			p.Logger.ErrorContext(r.Context(), err.Error())
+			continue
+		}
+
+		event.User = user.Name
+
+		if err = p.EventsRepo.NewEvent(r.Context(), id, *event); err != nil {
+			p.Logger.ErrorContext(r.Context(), err.Error())
+			continue
+		}
+
+		p.Logger.DebugContext(r.Context(),
+			fmt.Sprintf("retrieved via websocket message: %s, of type: %d",
+				string(msg),
+				typ,
+			))
 
 		resp := map[string]any{
 			"echo": string(msg),
 		}
 
-		conn.WriteJSON(resp)
+		if err = conn.WriteJSON(resp); err != nil {
+			p.Logger.ErrorContext(r.Context(), err.Error())
+			break
+		}
 	}
+}
+
+func parse(b []byte) (*ports.TaskEventRequest, error) {
+	var event ports.TaskEventRequest
+
+	if err := json.Unmarshal(b, &event); err != nil {
+		return nil, err
+	}
+
+	return &event, nil
 }

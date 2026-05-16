@@ -21,9 +21,15 @@ type Project struct {
 	TemplatePath string
 	Logger       *slog.Logger
 
-	UserRepo        ports.UserRepo
-	ProjectRepo     ports.ProjectRepo
-	TasksRepo       ports.TasksRepo
+	UserRepo    ports.UserRepo
+	ProjectRepo ports.ProjectRepo
+	TasksRepo   ports.TasksRepo
+
+	EventsRepo ports.EventStore
+
+	InChannel  chan (ports.TaskEventRequest)
+	OutChannel chan (ports.Task)
+
 	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -32,7 +38,11 @@ func NewProjectHandler(path string,
 	u ports.UserRepo,
 	p ports.ProjectRepo,
 	t ports.TasksRepo,
-	e map[string]func(w http.ResponseWriter, r *http.Request)) *Project {
+	e ports.EventStore,
+	endpoints map[string]func(w http.ResponseWriter, r *http.Request)) (*Project, error) {
+
+	// eventSink := make(chan ports.TaskEventRequest)
+
 	return &Project{
 		TemplatePath: path,
 		Logger:       l,
@@ -40,8 +50,12 @@ func NewProjectHandler(path string,
 		ProjectRepo:  p,
 		TasksRepo:    t,
 
-		EndpointMapping: e,
-	}
+		EventsRepo: e,
+
+		// InChannel: eventSink,
+
+		EndpointMapping: endpoints,
+	}, nil
 }
 
 func (p *Project) authUser(r *http.Request) (*ports.User, error) {
@@ -255,15 +269,6 @@ func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
 
 	p.Logger.DebugContext(r.Context(), "hello create task on project: "+id)
 
-	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
-	if err != nil {
-		p.Logger.ErrorContext(r.Context(), "could not retrieve snapshot for id: "+id)
-		http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
-		return
-	}
-
-	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
-
 	data := map[string]any{
 		"ID": id,
 	}
@@ -306,7 +311,7 @@ func LoginSubmit(
 
 		if result.IsNewUser {
 			l.Info(fmt.Sprintf("first admin registered: %s", result.User.Name))
-			w.Write([]byte(fmt.Sprintf("Welcome! You are the first admin (%s).", result.User.Name)))
+			// w.Write([]byte(fmt.Sprintf("Welcome! You are the first admin (%s).", result.User.Name)))
 			return
 		}
 
