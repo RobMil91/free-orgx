@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/RobMil91/free-orgx/internal/core/event"
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 )
@@ -30,6 +31,9 @@ type Project struct {
 	InChannel  chan (ports.TaskEventRequest)
 	OutChannel chan (ports.Task)
 
+	TasksSubjects map[string]event.TaskSubject //project_id -> subject
+	// TasksObservers map[string]event.TaskObserver //project_id -> observer?
+
 	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
 }
 
@@ -41,8 +45,6 @@ func NewProjectHandler(path string,
 	e ports.EventStore,
 	endpoints map[string]func(w http.ResponseWriter, r *http.Request)) (*Project, error) {
 
-	// eventSink := make(chan ports.TaskEventRequest)
-
 	return &Project{
 		TemplatePath: path,
 		Logger:       l,
@@ -52,7 +54,7 @@ func NewProjectHandler(path string,
 
 		EventsRepo: e,
 
-		// InChannel: eventSink,
+		TasksSubjects: map[string]event.TaskSubject{},
 
 		EndpointMapping: endpoints,
 	}, nil
@@ -123,14 +125,6 @@ func (p *Project) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	f(w, r)
-}
-
-func TasksHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached tasks handler")
-		tmpl := template.Must(template.ParseFiles(htmxPath + "taskboard.html"))
-		tmpl.Execute(w, nil)
-	}
 }
 
 func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
@@ -204,20 +198,6 @@ func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.Project
 	}
 }
 
-func auth(r *http.Request, u ports.UserRepo) (*ports.User, error) {
-	c, err := r.Cookie(SessionCookieID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid token in request %w", err)
-	}
-
-	user, err := u.IsValid(r.Context(), c.Value)
-	if err != nil {
-		return nil, fmt.Errorf("invalid session  %w", err)
-	}
-
-	return user, nil
-}
-
 func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := p.authUser(r)
 	if err != nil {
@@ -227,8 +207,14 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.PathValue("id")
-
 	p.Logger.DebugContext(r.Context(), "hello project: "+id)
+
+	project, err := p.ProjectRepo.GetProject(r.Context(), id)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), "could not load project for id: "+id)
+		http.Error(w, "could not load project for id: "+id, http.StatusInternalServerError)
+		return
+	}
 
 	tasks, err := p.TasksRepo.LoadSnapshot(r.Context(), id)
 	if err != nil {
@@ -240,7 +226,8 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
 
 	data := map[string]any{
-		"ID": id,
+		"ID":   id,
+		"Name": project.Name,
 	}
 	if len(tasks) == 0 {
 		data["Tasks"] = nil

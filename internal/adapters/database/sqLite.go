@@ -26,21 +26,58 @@ type SQLiteAdapter struct {
 	Conn *sql.DB
 }
 
+// GetAllProjects implements [ports.ProjectRepo].
+func (s *SQLiteAdapter) GetAllProjects(ctx context.Context) ([]models.Project, error) {
+	panic("unimplemented")
+}
+
 // GetEvents implements [ports.EventStore].
 func (s *SQLiteAdapter) GetEvents(ctx context.Context, project_id string) ([]ports.TaskEvent, error) {
-	panic("unimplemented")
+	rows, err := s.Conn.QueryContext(ctx,
+		`SELECT id,event_type,created_at,deadline,user,title,description,status,project_id 
+	FROM task_events
+	WHERE project_id = ?`, project_id)
+	if err != nil {
+		return nil, fmt.Errorf("query to db failed [%w]", err)
+	}
+
+	defer rows.Close()
+
+	var events []ports.TaskEvent
+
+	for rows.Next() {
+		e := ports.TaskEvent{}
+		err := rows.Scan(
+			&e.ID,
+			&e.TaskEventRequest.Type,
+			&e.EventTime,
+			&e.Deadline,
+			&e.User,
+			&e.Title,
+			&e.Description,
+			&e.Status,
+			&e.ProjectID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get event [%w]", err)
+		}
+
+		events = append(events, e)
+	}
+
+	return events, nil
 }
 
 // NewEvent implements [ports.EventStore].
 func (s *SQLiteAdapter) NewEvent(
 	ctx context.Context,
 	project_id string,
-	t ports.TaskEventRequest) error {
+	t ports.TaskEventRequest) (*ports.TaskEvent, error) {
 
 	id, err := createRandStr(16)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not generate project id: %v", err))
-		return ports.DatabaseError
+		return nil, ports.DatabaseError
 	}
 
 	created := time.Now().Format(time.RFC3339)
@@ -49,17 +86,54 @@ func (s *SQLiteAdapter) NewEvent(
 		`INSERT INTO task_events (id,event_type,created_at,deadline,user,title,description,status,project_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not prepare project insert: %v", err))
-		return ports.DatabaseError
+		return nil, ports.DatabaseError
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(*id, t.Type, created, t.Deadline, t.User, t.Title, t.Description, t.Status, project_id)
+	_, err = stmt.Exec(
+		*id,
+		t.Type,
+		created,
+		t.Deadline, t.User, t.Title, t.Description, t.Status, project_id)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not create project: %v", err))
-		return ports.DatabaseError
+		return nil, ports.DatabaseError
 	}
 
-	return nil
+	return s.getTaskEvent(ctx, *id)
+}
+
+func (s *SQLiteAdapter) getTaskEvent(ctx context.Context, id string) (*ports.TaskEvent, error) {
+	rows, err := s.Conn.QueryContext(ctx,
+		`SELECT id,event_type,created_at,deadline,user,title,description,status,project_id 
+	FROM task_events
+	WHERE id = ?`, id)
+	if err != nil {
+		return nil, fmt.Errorf("query to db failed [%w]", err)
+	}
+
+	defer rows.Close()
+
+	var e ports.TaskEvent
+
+	for rows.Next() {
+		err := rows.Scan(
+			&e.ID,
+			&e.TaskEventRequest.Type,
+			&e.EventTime,
+			&e.Deadline,
+			&e.User,
+			&e.Title,
+			&e.Description,
+			&e.Status,
+			&e.ProjectID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get event [%w]", err)
+		}
+	}
+
+	return &e, nil
 }
 
 // GetAll implements [ports.UserRepo].
@@ -482,6 +556,31 @@ func (s *SQLiteAdapter) CreateProject(ctx context.Context, name, owner string) (
 		Owner:   owner,
 		Created: created,
 	}, nil
+}
+
+func (s *SQLiteAdapter) GetProject(ctx context.Context, id string) (*models.Project, error) {
+	rows, err := s.Conn.Query(`SELECT id, name, owner, created_at FROM projects WHERE id = ?`, id)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not query projects: %v", err))
+		return nil, ports.DatabaseError
+	}
+
+	defer rows.Close()
+
+	var projects []models.Project
+	for rows.Next() {
+		var p models.Project
+		if err := rows.Scan(&p.ID, &p.Name, &p.Owner, &p.Created); err != nil {
+			return nil, err
+		}
+		projects = append(projects, p)
+	}
+
+	if len(projects) != 1 {
+		return nil, fmt.Errorf("probem in db with id %s should be one entry", id)
+	}
+
+	return &projects[0], nil
 }
 
 // GetProjectsByOwner implements [ports.ProjectRepo].

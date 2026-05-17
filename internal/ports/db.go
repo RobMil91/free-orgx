@@ -55,6 +55,8 @@ type ProjectRepo interface {
 	CreateProject(ctx context.Context, name, owner string) (models.Project, error)
 	GetProjectsByOwner(ctx context.Context, owner string) ([]models.Project, error)
 	DeleteProject(ctx context.Context, id string) error
+	GetAllProjects(ctx context.Context) ([]models.Project, error)
+	GetProject(ctx context.Context, id string) (*models.Project, error)
 }
 
 const (
@@ -68,12 +70,14 @@ const (
 )
 
 type TaskEventRequest struct {
-	Type string `json:"event-type"`
-	User string
+	Type      string `json:"event-type"`
+	User      string
+	ProjectID string
 	NewTask
 }
 
 type TaskEvent struct {
+	ID string
 	TaskEventRequest
 	EventTime time.Time
 }
@@ -84,7 +88,7 @@ type TasksRepo interface {
 }
 
 type EventStore interface {
-	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) error
+	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) (*TaskEvent, error)
 	GetEvents(ctx context.Context, project_id string) ([]TaskEvent, error)
 }
 
