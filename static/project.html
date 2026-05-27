@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,59 +10,53 @@
 
   <link rel="stylesheet" type="text/css" href="styles_project.css">
 </head>
+
 <body>
   <header>
     <div>
-    <a href="/" class="logo">Free Orgx</a>
-      </div>
+      <a href="/" class="logo">Free Orgx</a>
+    </div>
     <div>
       <span class="user-info">{{.Username}}</span>
       {{if .IsAdmin}}
       <a href="/users" class="nav-btn primary">Manage Users</a>
       {{end}}
-      <a href="/project" class="nav-btn primary" >Projects</a>
+      <a href="/project" class="nav-btn primary">Projects</a>
       <a href="/logout" class="nav-btn">Logout</a>
     </div>
   </header>
   <main>
-      <div class="main" id="pagemain">
+    <div class="main" id="pagemain">
       <h2>Your Projects</h2>
-      {{if .Projects}}
-      <ul id="projects"  class="project-list">
+      <ul id="projects" class="project-list">
+        {{if .Projects}}
         {{range .Projects}}
         <li class="project-item">
 
-              <a href="/projects/{{ .ID }}/tasks" style="text-decoration: none;">
+          <a href="/projects/{{ .ID }}/tasks" style="text-decoration: none;">
             <div>
-            <span class="project-name" >{{.Name}}</span>
-          <span class="project-id">ID: {{.ID}}</span>
-                <button 
-                    hx-delete="project/delete/{{.ID}}"
-                    hx-target="closest li"
-                    hx-swap="outerHTML"
-                    >
-                    Delete
-                </button> 
+              <span class="project-name">{{.Name}}</span>
+              <span class="project-id">ID: {{.ID}}</span>
+              <button hx-delete="project/delete/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">
+                Delete
+              </button>
             </div>
-</a>
-            </div>
-        </li>
-        {{end}}
-      </ul>
-      {{else}}
-      <div class="empty-state">No projects yet. Create one above!</div>
-      {{end}}
+          </a>
+    </div>
+    </li>
+    {{end}}
+    </ul>
+    {{else}}
+    <div class="empty-state">No projects yet. Create one above!</div>
+    {{end}}
 
-        <div>
-    <form
-     hx-post="/project/create"
-      hx-trigger="submit"
-       hx-target="#projects"
-        hx-swap="beforeend"> 
-    <input type="text" name="name" placeholder="Enter project name" required>
-    <button type="submit"> Create </button>
-        </form>
-</div>
+    <div>
+      <form hx-post="/project/create" hx-trigger="submit" hx-target="#projects" hx-swap="beforeend">
+        <input type="text" name="name" placeholder="Enter project name" required>
+        <button type="submit"> Create </button>
+      </form>
+    </div>
   </main>
 </body>
+
 </html>

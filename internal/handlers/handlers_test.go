@@ -14,6 +14,7 @@ import (
 
 	"github.com/RobMil91/free-orgx/internal/adapters/mocks"
 	"github.com/RobMil91/free-orgx/internal/handlers"
+	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 )
 
@@ -31,7 +32,9 @@ func (m *mockTasksRepo) CreateSnapshot(_ context.Context, _ string, _ []ports.Ta
 }
 
 func TestProject_ProjectTasksHandler(t *testing.T) {
-	ram := &mocks.RAM{}
+	ram := &mocks.RAM{
+		Projects: make(map[string][]models.Project),
+	}
 	if err := ram.Create(context.Background(), "testuser", "pass", ports.RoleUser); err != nil {
 		t.Fatal(err)
 	}
@@ -49,42 +52,67 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	tests := []struct {
-		name       string
-		cookieVal  string
-		projectID  string
-		tasksRepo  *mockTasksRepo
-		wantStatus int
-		wantBody   string
+		name        string
+		cookieVal   string
+		projectID   string
+		tasksRepo   *mockTasksRepo
+		projectRepo []models.Project
+		wantStatus  int
+		wantBody    string
 	}{
 		{
-			name:       "no cookie returns forbidden",
-			cookieVal:  "",
-			projectID:  "proj-1",
-			tasksRepo:  &mockTasksRepo{},
+			name:      "no cookie returns forbidden",
+			cookieVal: "",
+			projectID: "proj-1",
+			tasksRepo: &mockTasksRepo{},
+			projectRepo: []models.Project{
+				{
+					ID:   "proj-1",
+					Name: "testProjectName",
+				},
+			},
 			wantStatus: http.StatusForbidden,
 			wantBody:   "Please Login first\n",
 		},
 		{
-			name:       "invalid cookie returns forbidden",
-			cookieVal:  "invalid-cookie",
-			projectID:  "proj-1",
-			tasksRepo:  &mockTasksRepo{},
+			name:      "invalid cookie returns forbidden",
+			cookieVal: "invalid-cookie",
+			projectID: "proj-1",
+			tasksRepo: &mockTasksRepo{},
+			projectRepo: []models.Project{
+				{
+					ID:   "proj-1",
+					Name: "testProjectName",
+				},
+			},
 			wantStatus: http.StatusForbidden,
 			wantBody:   "Session invalid, please login again\n",
 		},
 		{
-			name:       "load snapshot error returns 500",
-			cookieVal:  validCookie,
-			projectID:  "proj-1",
-			tasksRepo:  &mockTasksRepo{err: errors.New("db error")},
+			name:      "load snapshot error returns 500",
+			cookieVal: validCookie,
+			projectID: "proj-1",
+			tasksRepo: &mockTasksRepo{err: errors.New("db error")},
+			projectRepo: []models.Project{
+				{
+					ID:   "proj-1",
+					Name: "testProjectName",
+				},
+			},
 			wantStatus: http.StatusInternalServerError,
 			wantBody:   "could not retrieve snapshot for id: proj-1\n",
 		},
 		{
-			name:       "empty tasks executes template with nil",
-			cookieVal:  validCookie,
-			projectID:  "proj-1",
-			tasksRepo:  &mockTasksRepo{tasks: []ports.Task{}},
+			name:      "empty tasks executes template with nil",
+			cookieVal: validCookie,
+			projectID: "proj-1",
+			tasksRepo: &mockTasksRepo{tasks: []ports.Task{}},
+			projectRepo: []models.Project{
+				{
+					ID:   "proj-1",
+					Name: "testProjectName",
+				},
+			},
 			wantStatus: http.StatusOK,
 			wantBody:   "taskboard content",
 		},
@@ -94,7 +122,13 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 			projectID: "proj-2",
 			tasksRepo: &mockTasksRepo{
 				tasks: []ports.Task{
-					{NewTask: ports.NewTask{Title: "Task 1", Description: "Desc 1"}, ID: "1"},
+					{NewTask: ports.NewTask{Title: "Task 1", Description: "Desc 1"}, ID: "proj-2"},
+				},
+			},
+			projectRepo: []models.Project{
+				{
+					ID:   "proj-2",
+					Name: "testProjectName",
 				},
 			},
 			wantStatus: http.StatusOK,
@@ -103,6 +137,7 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ram.Projects["testuser"] = append(ram.Projects["testuser"], tt.projectRepo...)
 			p, err := handlers.NewProjectHandler(
 				tmpDir+"/",
 				logger,

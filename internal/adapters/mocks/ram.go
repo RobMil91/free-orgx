@@ -25,6 +25,26 @@ type RAM struct {
 	Projects map[string][]models.Project
 }
 
+// GetProject implements [ports.ProjectRepo].
+func (r *RAM) GetProject(ctx context.Context, id string) (*models.Project, error) {
+
+	for _, u := range r.Users {
+		for _, p := range r.Projects[u.Name] {
+			if p.ID == id {
+				return &p, nil
+			}
+
+		}
+	}
+
+	return nil, fmt.Errorf("not found %s", id)
+}
+
+// GetAllProjects implements [ports.ProjectRepo].
+func (r *RAM) GetAllProjects(ctx context.Context) ([]models.Project, error) {
+	panic("unimplemented")
+}
+
 // GetAll implements [ports.UserRepo].
 func (r *RAM) GetAll(ctx context.Context) ([]ports.User, error) {
 	users := make([]ports.User, 0, len(r.Users))
