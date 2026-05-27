@@ -90,7 +90,6 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	}(*subjectObserver, projectID)
 
 	for {
-
 		typ, msg, err := conn.ReadMessage()
 		if err != nil {
 			p.Logger.ErrorContext(r.Context(), err.Error())
