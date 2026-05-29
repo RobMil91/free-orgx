@@ -128,6 +128,24 @@ func (o *TaskObserver) Update(t ports.TaskEvent) error {
 }
 
 func (o *TaskObserver) toHtml(t ports.TaskEvent) ([]byte, error) {
+	if t.TaskEventRequest.Type == "deleteTask" {
+
+		tmpl := template.Must(template.ParseFiles(o.TemplatePath + "task_delete.html"))
+
+		var buffer bytes.Buffer
+
+		err := tmpl.Execute(&buffer, map[string]string{
+			"ID": t.ID,
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("could not append data to templ [%w]", err)
+		}
+
+		return buffer.Bytes(), nil
+
+	}
+
 	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "task_card.html"))
 
 	var buffer bytes.Buffer

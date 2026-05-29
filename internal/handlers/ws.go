@@ -102,7 +102,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				typ,
 			))
 
-		event, err := parse(msg)
+		event, err := parseCreate(msg)
 		if err != nil {
 			p.Logger.ErrorContext(r.Context(), err.Error())
 			continue
@@ -137,8 +137,20 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parse(b []byte) (*ports.TaskEventRequest, error) {
+func parseCreate(b []byte) (*ports.TaskEventRequest, error) {
 	var event ports.TaskEventRequest
+
+	if err := json.Unmarshal(b, &event); err != nil {
+		return nil, err
+	}
+
+	return &event, nil
+}
+
+func parseDelete(b []byte) (*ports.TaskEventRequest, error) {
+	var event ports.TaskEventRequest
+	//TODO need to parse the id that is send.. on delete type
+	//="retrieved via websocket message: {\"event-type\":\"deleteTask\",\"taskID\":\"Lm4WAmhN2OsExk3BPjWHyw==\"
 
 	if err := json.Unmarshal(b, &event); err != nil {
 		return nil, err
