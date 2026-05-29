@@ -134,16 +134,6 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		// code snipet test remove after TODO
-		// resp := map[string]any{
-		// 	"echo": string(msg),
-		// }
-
-		// if err = conn.WriteJSON(resp); err != nil {
-		// 	p.Logger.ErrorContext(r.Context(), err.Error())
-		// 	break
-		// }
 	}
 }
 
