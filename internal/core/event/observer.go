@@ -143,7 +143,6 @@ func (o *TaskObserver) toHtml(t ports.TaskEvent) ([]byte, error) {
 		}
 
 		return buffer.Bytes(), nil
-
 	}
 
 	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "task_card.html"))

@@ -76,6 +76,14 @@ type TaskEventRequest struct {
 	NewTask
 }
 
+type EventType struct {
+	T string `json:"event-type"`
+}
+
+type DeleteTask struct {
+	ID string
+}
+
 type TaskEvent struct {
 	ID string
 	TaskEventRequest

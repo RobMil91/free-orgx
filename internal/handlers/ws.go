@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -102,39 +103,94 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				typ,
 			))
 
-		event, err := parseCreate(msg)
+		var eTyp ports.EventType
+
+		err = json.Unmarshal(msg, &eTyp)
 		if err != nil {
+
 			p.Logger.ErrorContext(r.Context(), err.Error())
 			continue
 		}
 
-		event.User = user.Name
+		switch eTyp.T {
 
-		p.Logger.DebugContext(r.Context(),
-			fmt.Sprintf("serialized to %+v",
-				event,
-			))
-
-		newEvent, err := p.EventsRepo.NewEvent(r.Context(), projectID, *event)
-		if err != nil {
-			p.Logger.ErrorContext(r.Context(), err.Error())
+		default:
+			p.Logger.WarnContext(r.Context(), fmt.Sprintf("unkown event type %s", eTyp.T))
 			continue
+
+		case "deleteTask":
+
+			taskCardID, err := parseDelete(msg)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			err = p.handlEvent(r.Context(), ports.TaskEvent{
+				ID: *taskCardID,
+				TaskEventRequest: ports.TaskEventRequest{
+					Type: "deleteTask",
+				},
+			}, projectID)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			continue
+
+		case "create":
+			event, err := parseCreate(msg)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			event.User = user.Name
+
+			p.Logger.DebugContext(r.Context(),
+				fmt.Sprintf("serialized to %+v",
+					event,
+				))
+
+			newEvent, err := p.EventsRepo.NewEvent(r.Context(), projectID, *event)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			subject, ok := p.TasksSubjects[projectID]
+			if !ok {
+				p.Logger.ErrorContext(r.Context(), fmt.Sprintf("no subject project id found, within websocket connection %s", projectID))
+				http.Error(w, fmt.Sprintf("no subject project id found, within websocket connection %s", projectID), http.StatusInternalServerError)
+				return
+			}
+
+			err = subject.Notify(r.Context(), *newEvent)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			continue
+
 		}
 
-		subject, ok := p.TasksSubjects[projectID]
-		if !ok {
-			p.Logger.ErrorContext(r.Context(), fmt.Sprintf("no subject project id found, within websocket connection %s", projectID))
-			http.Error(w, fmt.Sprintf("no subject project id found, within websocket connection %s", projectID), http.StatusInternalServerError)
-			return
-		}
-
-		err = subject.Notify(r.Context(), *newEvent)
-		if err != nil {
-			p.Logger.ErrorContext(r.Context(), err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 	}
+}
+
+func (p *Project) handlEvent(ctx context.Context, te ports.TaskEvent, projectID string) error {
+	subject, ok := p.TasksSubjects[projectID]
+	if !ok {
+		return fmt.Errorf("no subject project id found, within websocket connection %s", projectID)
+	}
+
+	err := subject.Notify(ctx, te)
+	if err != nil {
+		return fmt.Errorf("notify error [%w]", err)
+	}
+
+	return nil
 }
 
 func parseCreate(b []byte) (*ports.TaskEventRequest, error) {
@@ -147,8 +203,8 @@ func parseCreate(b []byte) (*ports.TaskEventRequest, error) {
 	return &event, nil
 }
 
-func parseDelete(b []byte) (*ports.TaskEventRequest, error) {
-	var event ports.TaskEventRequest
+func parseDelete(b []byte) (*string, error) {
+	var event ports.DeleteTask
 	//TODO need to parse the id that is send.. on delete type
 	//="retrieved via websocket message: {\"event-type\":\"deleteTask\",\"taskID\":\"Lm4WAmhN2OsExk3BPjWHyw==\"
 
@@ -156,7 +212,7 @@ func parseDelete(b []byte) (*ports.TaskEventRequest, error) {
 		return nil, err
 	}
 
-	return &event, nil
+	return &event.ID, nil
 }
 
 func createRandStr(length int) (*string, error) {
