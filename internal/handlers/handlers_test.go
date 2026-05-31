@@ -19,15 +19,15 @@ import (
 )
 
 type mockTasksRepo struct {
-	tasks []ports.Task
+	tasks []models.Task
 	err   error
 }
 
-func (m *mockTasksRepo) LoadSnapshot(_ context.Context, _ string) ([]ports.Task, error) {
+func (m *mockTasksRepo) LoadSnapshot(_ context.Context, _ string) ([]models.Task, error) {
 	return m.tasks, m.err
 }
 
-func (m *mockTasksRepo) CreateSnapshot(_ context.Context, _ string, _ []ports.Task) error {
+func (m *mockTasksRepo) CreateSnapshot(_ context.Context, _ string, _ []models.Task) error {
 	return nil
 }
 
@@ -106,7 +106,7 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 			name:      "empty tasks executes template with nil",
 			cookieVal: validCookie,
 			projectID: "proj-1",
-			tasksRepo: &mockTasksRepo{tasks: []ports.Task{}},
+			tasksRepo: &mockTasksRepo{tasks: []models.Task{}},
 			projectRepo: []models.Project{
 				{
 					ID:   "proj-1",
@@ -121,8 +121,8 @@ func TestProject_ProjectTasksHandler(t *testing.T) {
 			cookieVal: validCookie,
 			projectID: "proj-2",
 			tasksRepo: &mockTasksRepo{
-				tasks: []ports.Task{
-					{NewTask: ports.NewTask{Title: "Task 1", Description: "Desc 1"}, ID: "proj-2"},
+				tasks: []models.Task{
+					{NewTask: models.NewTask{Title: "Task 1", Description: "Desc 1"}, TaskID: "proj-2"},
 				},
 			},
 			projectRepo: []models.Project{

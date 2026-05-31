@@ -1,4 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sleek Taskboard - Unified Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
     :root {
       --bg-body: #f1f5f9;
       --bg-surface: #ffffff;
@@ -35,7 +47,7 @@
 
     .task-grid {
       display: grid;
-      grid-template-columns: 180px repeat(3, 1fr);
+      grid-template-columns: 180px repeat(5, 1fr);
       gap: 10px;
     }
 
@@ -240,3 +252,116 @@
     button:hover {
       opacity: 0.9;
     }
+  </style>
+</head>
+
+<body>
+
+  <div class="board-wrapper">
+    <div class="task-grid">
+      <div id="1.1" class="header-cell">Category</div>
+      <div id="1.2" class="header-cell" style="color: var(--danger);">Blocking</div>
+      <div id="1.3" class="header-cell">Todo</div>
+      <div id="1.4" class="header-cell">In Progress</div>
+      <div id="1.5" class="header-cell">Validation</div>
+      <div id="1.6" class="header-cell">Live</div>
+
+      <div class="row-group">
+        <div id="2.1" class="row-label">Internal Tools</div>
+        <div id="2.2" class="task-cell blocking-lane">
+          <div class="card blocked">Log Overflow</div>
+        </div>
+        <div id="2.3" class="task-cell">
+          <div class="card">Audit Script</div>
+        </div>
+        <div id="2.4" class="task-cell"></div>
+        <div id="2.5" class="task-cell"></div>
+        <div id="2.6" class="task-cell"></div>
+      </div>
+
+      <div class="row-group">
+        <div id="3.1" class="row-label">Security Mesh</div>
+        <div id="3.2" class="task-cell blocking-lane"></div>
+        <div id="3.3" class="task-cell"></div>
+        <div id="3.4" class="task-cell">
+          <div class="card">Handshake Fix</div>
+        </div>
+        <div id="3.5" class="task-cell"></div>
+        <div id="3.6" class="task-cell"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-row">
+    <div class="panel editor-panel">
+      <div class="panel-header">
+        <h3>Configuration</h3>
+      </div>
+      <div class="panel-content">
+        <label>Summary</label>
+        <input type="text" placeholder="e.g. Memory leak investigation">
+        <label>Target Grid Lane</label>
+        <select>
+          <option>Blocking</option>
+          <option selected>Todo</option>
+          <option>In Progress</option>
+        </select>
+        <label>Internal Notes</label>
+        <textarea rows="2" placeholder="Describe blockers or context..."></textarea>
+        <button type="button">Update Coordinate State</button>
+      </div>
+    </div>
+
+    <div class="panel people-panel">
+      <div class="panel-header">
+        <h3>Select Assignee</h3>
+      </div>
+      <div class="panel-content">
+        <div class="person-item selected">
+          <div class="avatar">JS</div>
+          <div class="info">
+            <div style="font-size:0.75rem; font-weight:700">John Smith</div>
+          </div>
+          <div class="status-dot" style="background: var(--success)"></div>
+        </div>
+        <div class="person-item">
+          <div class="avatar" style="background:#db2777">AL</div>
+          <div class="info">
+            <div style="font-size:0.75rem; font-weight:700">Alice Lee</div>
+          </div>
+          <div class="status-dot" style="background: var(--success)"></div>
+        </div>
+        <div class="person-item">
+          <div class="avatar" style="background:#d97706">SC</div>
+          <div class="info">
+            <div style="font-size:0.75rem; font-weight:700">Sam Chen</div>
+          </div>
+          <div class="status-dot" style="background: var(--danger)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel log-panel">
+      <div class="panel-header">
+        <h3>Queue Log</h3>
+      </div>
+      <div class="panel-content">
+        <div class="log-entry">
+          <span style="color:var(--text-dim)">[14:10]</span> <span
+            style="color:var(--accent); font-weight:600">SYS</span> Grid initialized.
+        </div>
+        <div class="log-entry" style="border-left-color: var(--danger)">
+          <span style="color:var(--text-dim)">[14:12]</span> <span
+            style="color:var(--danger); font-weight:600">BLK</span> Card 1.1 updated.
+        </div>
+        <div class="log-entry">
+          <span style="color:var(--text-dim)">[14:15]</span> <span
+            style="color:var(--accent); font-weight:600">USR</span> Assignee changed.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

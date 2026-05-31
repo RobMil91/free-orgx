@@ -6,20 +6,22 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"strconv"
 
+	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 	"github.com/gorilla/websocket"
 )
 
 type observer interface {
-	Update(t ports.TaskEvent) error
+	Update(t models.TaskEvent) error
 	GetID() string
 }
 
 type subject interface {
 	Add(o observer) error
 	Remove(o observer) error
-	Notify(ctx context.Context, t ports.TaskEvent) error
+	Notify(ctx context.Context, t models.TaskEvent) error
 }
 
 var _ subject = (*TaskSubject)(nil)
@@ -49,7 +51,7 @@ func (w *TaskSubject) Add(o observer) error {
 }
 
 // Notify implements [subject].
-func (w *TaskSubject) Notify(ctx context.Context, t ports.TaskEvent) error {
+func (w *TaskSubject) Notify(ctx context.Context, t models.TaskEvent) error {
 	for _, c := range w.observers {
 		err := c.Update(t)
 		if err != nil {
@@ -78,13 +80,16 @@ type TaskObserver struct {
 	Conn         *websocket.Conn
 	Logger       *slog.Logger
 	TemplatePath string
+	Events       ports.EventStore
+	ProjectID    string
 }
 
 func NewTaskObserver(id string,
 	conn *websocket.Conn,
 	l *slog.Logger,
 	tp string,
-	p []ports.TaskEvent,
+	t ports.EventStore,
+	pID string,
 ) (*TaskObserver, error) {
 
 	newObserver := TaskObserver{
@@ -92,11 +97,46 @@ func NewTaskObserver(id string,
 		Conn:         conn,
 		Logger:       l,
 		TemplatePath: tp,
+		Events:       t,
+		ProjectID:    pID,
 	}
 
-	for _, e := range p {
-		if err := newObserver.update(context.Background(), e); err != nil {
-			return nil, fmt.Errorf("failed to send e (%+v), [%w]", e, err)
+	previousEvents, err := newObserver.Events.GetEvents(context.TODO(), pID)
+	if err != nil {
+		newObserver.Logger.ErrorContext(context.TODO(), err.Error())
+		return nil, err
+	}
+
+	//calculate only the events that need to be send
+	// create event plus update to newest state
+	// per row
+
+	for _, e := range previousEvents {
+		if e.Type == "create" {
+			// send create row without sending the last event
+
+			//create row event
+
+			if err := newObserver.update(context.Background(), models.TaskEvent{
+
+				TaskEventRequest: models.TaskEventRequest{
+					TaskID:    e.TaskID,
+					Type:      "create-row",
+					ProjectID: e.ProjectID,
+				},
+			}); err != nil {
+				return nil, fmt.Errorf("failed to send event (%+v), because [%w]", e, err)
+			}
+
+			_, event, err := newObserver.getLastTaskStatus(context.Background(), e)
+			if err != nil {
+				return nil, fmt.Errorf("could not scrap history to state %w", err)
+			}
+
+			if err := newObserver.update(context.Background(), *event); err != nil {
+				return nil, fmt.Errorf("failed to send event (%+v), because [%w]", e, err)
+			}
+
 		}
 	}
 
@@ -108,12 +148,194 @@ func (t *TaskObserver) GetID() string {
 	return t.ID
 }
 
-func (o *TaskObserver) update(ctx context.Context, t ports.TaskEvent) error {
-	msg, err := o.toHtml(t)
+func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
+	switch t.TaskEventRequest.Type {
+	default:
+		return fmt.Errorf("unkown event type for observer to send %s", t.TaskEventRequest.Type)
+	case "create-row":
+		msg, err := o.rowHTML(t)
+		if err != nil {
+			return err
+		}
+
+		o.Logger.DebugContext(ctx, fmt.Sprintf("sending message update [ %s ]", string(msg)))
+		err = o.Conn.WriteMessage(websocket.TextMessage, msg)
+		if err != nil {
+			return err
+		}
+	case "create":
+		msg, err := o.rowAndCard(t)
+		if err != nil {
+			return err
+		}
+
+		o.Logger.DebugContext(ctx, fmt.Sprintf("sending message update [ %s ]", string(msg)))
+		err = o.Conn.WriteMessage(websocket.TextMessage, msg)
+		if err != nil {
+			return err
+		}
+
+	case ports.EditEvent:
+		o.Logger.DebugContext(ctx, fmt.Sprintf("got edit event [ %+v ]", t))
+		// old, err := o.Events.GetEvent(ctx, t.EventID)
+		// if err != nil {
+		// 	return fmt.Errorf("edit event could not find taskID %s events, because %w", t.Status, err)
+		// }
+
+		oldState, newestEvent, err := o.getLastTaskStatus(ctx, t)
+		if err != nil {
+			return fmt.Errorf("could not get state and newest Event %w", err)
+		}
+
+		updated, updatedTask := models.Diff(oldState.NewTask, newestEvent.NewTask)
+
+		if updated.Status {
+			//delete old
+			//determine position on board
+			pos, err := o.rowPosition(ctx, t.TaskID, t.ProjectID)
+			if err != nil {
+				return fmt.Errorf("failed to get position %w", err)
+			}
+
+			posState := oldState.Status
+			if posState == "In Progress" {
+				posState = "InProgress"
+			}
+
+			oldPosition := fmt.Sprintf("%s.%s", *pos, posState)
+
+			err = o.deleteDiv(ctx, oldPosition)
+			if err != nil {
+				return fmt.Errorf("failed to delete div %w", err)
+			}
+
+			var rowPosition string = t.Status
+			if t.NewTask.Status == "In Progress" {
+				rowPosition = "InProgress"
+			}
+
+			newPosition := fmt.Sprintf("%s.%s", *pos, rowPosition)
+
+			err = o.updateRowCard(ctx, models.CardInput{
+				CardPosition: newPosition,
+				Title:        updatedTask.Title,
+				ID:           oldState.TaskID,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update row card %w", err)
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (o *TaskObserver) getLastTaskStatus(ctx context.Context, t models.TaskEvent) (*models.Task, *models.TaskEvent, error) {
+	allEvents, err := o.Events.GetEvents(ctx, t.ProjectID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var rowEvents []models.TaskEvent
+
+	for _, e := range allEvents {
+		if e.TaskID == t.TaskID {
+			rowEvents = append(rowEvents, e)
+		}
+	}
+
+	if len(rowEvents) < 2 {
+		return nil, nil, fmt.Errorf("did not find  enough row events for taskID %s, in project %s, events %d", t.TaskID, t.ProjectID, len(rowEvents))
+	}
+
+	// all the events should already be in database
+	// meaning we need to update fromm n-1 to n
+	// the send event should contain the new data of n, which is bad... probably should ignore.
+
+	oldState, err := models.EventsToState(rowEvents[:len(rowEvents)-1])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	newEvent := rowEvents[len(rowEvents)-1]
+
+	return oldState, &newEvent, nil
+}
+
+func (o *TaskObserver) updateRowCard(ctx context.Context, i models.CardInput) error {
+
+	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "card.html"))
+
+	var buffer2 bytes.Buffer
+
+	err := tmpl.Execute(&buffer2, map[string]string{
+		"Title":        i.Title,
+		"ID":           i.ID,
+		"CardPosition": i.CardPosition,
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not append data to templ [%w]", err)
+	}
+
+	msg2 := buffer2.Bytes()
+
+	o.Logger.DebugContext(ctx, fmt.Sprintf("sending create new card [ %s ]", string(msg2)))
+	err = o.Conn.WriteMessage(websocket.TextMessage, msg2)
 	if err != nil {
 		return err
 	}
-	o.Logger.DebugContext(ctx, fmt.Sprintf("sending message update [ %s ]", string(msg)))
+
+	return nil
+}
+
+func (o *TaskObserver) rowPosition(ctx context.Context, taskID, projectID string) (*string, error) {
+	events, err := o.Events.GetEvents(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+
+	rowNum := 2 //header + first row
+	for _, e := range events {
+
+		if e.Type == "edit-event" {
+			continue
+		}
+
+		if e.TaskID == taskID {
+			rN := strconv.Itoa(rowNum)
+			return &rN, nil
+		}
+
+		rowNum++
+
+		//TODO: the table hold all projectIDs, there can be multiple rows, how to know i added one?
+		//when i have another create there is one more row..
+		// if e.Type == "create" {
+		// 	rowNum++
+		// }
+	}
+
+	return nil, fmt.Errorf("did not find taskID %s in projectID %s", taskID, projectID)
+}
+
+func (o *TaskObserver) deleteDiv(ctx context.Context, boardPosition string) error {
+	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "task_delete.html"))
+
+	var buffer bytes.Buffer
+
+	err := tmpl.Execute(&buffer, map[string]string{
+		"BoardPosition": boardPosition,
+	})
+
+	if err != nil {
+		return fmt.Errorf("could not append data to templ [%w]", err)
+	}
+
+	msg := buffer.Bytes()
+
+	o.Logger.DebugContext(context.TODO(), fmt.Sprintf("sending message delete [ %s ]", string(msg)))
 	err = o.Conn.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
 		return err
@@ -123,36 +345,46 @@ func (o *TaskObserver) update(ctx context.Context, t ports.TaskEvent) error {
 }
 
 // Update implements [observer].
-func (o *TaskObserver) Update(t ports.TaskEvent) error {
+func (o *TaskObserver) Update(t models.TaskEvent) error {
 	return o.update(context.TODO(), t)
 }
 
-func (o *TaskObserver) toHtml(t ports.TaskEvent) ([]byte, error) {
-	if t.TaskEventRequest.Type == "deleteTask" {
+func (o *TaskObserver) rowHTML(t models.TaskEvent) ([]byte, error) {
+	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "empty_row.html"))
 
-		tmpl := template.Must(template.ParseFiles(o.TemplatePath + "task_delete.html"))
+	var buffer bytes.Buffer
 
-		var buffer bytes.Buffer
-
-		err := tmpl.Execute(&buffer, map[string]string{
-			"ID": t.ID,
-		})
-
-		if err != nil {
-			return nil, fmt.Errorf("could not append data to templ [%w]", err)
-		}
-
-		return buffer.Bytes(), nil
+	rowNumber, err := o.rowPosition(context.TODO(), t.TaskID, t.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("creating event row failed %w", err)
 	}
 
+	err = tmpl.Execute(&buffer, map[string]string{
+		"RowNumber": *rowNumber,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("could not append data to templ [%w]", err)
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func (o *TaskObserver) rowAndCard(t models.TaskEvent) ([]byte, error) {
 	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "task_card.html"))
 
 	var buffer bytes.Buffer
 
-	err := tmpl.Execute(&buffer, map[string]string{
+	rowNumber, err := o.rowPosition(context.TODO(), t.TaskID, t.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("creating event row failed %w", err)
+	}
+
+	err = tmpl.Execute(&buffer, map[string]string{
 		"Title":       t.Title,
 		"Description": t.Description,
-		"ID":          t.ID,
+		"ID":          t.TaskID,
+		"RowNumber":   *rowNumber,
 	})
 
 	if err != nil {

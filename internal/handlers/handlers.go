@@ -28,8 +28,8 @@ type Project struct {
 
 	EventsRepo ports.EventStore
 
-	InChannel  chan (ports.TaskEventRequest)
-	OutChannel chan (ports.Task)
+	// InChannel  chan (ports.TaskEventRequest)
+	// OutChannel chan (ports.Task)
 
 	TasksSubjects map[string]event.TaskSubject //project_id -> subject
 	// TasksObservers map[string]event.TaskObserver //project_id -> observer?
@@ -272,7 +272,7 @@ func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
 
 type TaskBoardValues struct {
 	ID    string
-	Tasks []ports.Task
+	Tasks []models.Task
 }
 
 func LoginSubmit(

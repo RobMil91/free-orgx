@@ -3,10 +3,10 @@ package database
 import (
 	"context"
 
-	"github.com/RobMil91/free-orgx/internal/ports"
+	"github.com/RobMil91/free-orgx/internal/models"
 )
 
-func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]ports.Task, error) {
+func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]models.Task, error) {
 	rows, err := s.Conn.Query(`
 		SELECT id, name, description
 		FROM tasks
@@ -18,10 +18,10 @@ func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]p
 
 	defer rows.Close()
 
-	var tasks []ports.Task
+	var tasks []models.Task
 	for rows.Next() {
-		var t ports.Task
-		if err := rows.Scan(&t.ID, &t.Title, &t.Description); err != nil {
+		var t models.Task
+		if err := rows.Scan(&t.TaskID, &t.Title, &t.Description); err != nil {
 			return nil, err
 		}
 		tasks = append(tasks, t)
@@ -30,7 +30,7 @@ func (s *SQLiteAdapter) LoadSnapshot(ctx context.Context, projectID string) ([]p
 	return tasks, nil
 }
 
-func (s *SQLiteAdapter) CreateSnapshot(ctx context.Context, projectID string, tasks []ports.Task) error {
+func (s *SQLiteAdapter) CreateSnapshot(ctx context.Context, projectID string, tasks []models.Task) error {
 	tx, err := s.Conn.Begin()
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func (s *SQLiteAdapter) CreateSnapshot(ctx context.Context, projectID string, ta
 	defer stmt.Close()
 
 	for _, t := range tasks {
-		_, err = stmt.Exec(t.ID, t.Title, t.Description, projectID)
+		_, err = stmt.Exec(t.TaskID, t.Title, t.Description, projectID)
 		if err != nil {
 			return err
 		}

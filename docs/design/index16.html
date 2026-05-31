@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sleek Taskboard - Unified Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-body: #f8fafc;
+      --bg-surface: #1e293b;
+      --bg-card: #334155;
+      --text-main: #0f172a;
+      --text-dim: #94a3b8;
+      --accent: #6366f1;
+      --danger: #ef4444;
+      --success: #10b981;
+      --border: rgba(255, 255, 255, 0.05);
+      --radius-lg: 16px;
+      --radius-md: 10px;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* --- TASKBOARD --- */
+    .board-wrapper {
+      background-color: var(--bg-surface);
+      padding: 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .task-grid {
+      display: grid;
+      /* Label(180px) | Blocking | Todo | In Progress | Validation | Live */
+      grid-template-columns: 180px repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .header-cell {
+      padding: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .row-group {
+      display: contents;
+    }
+
+    .row-label {
+      grid-column: 1;
+      padding: 15px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: rgba(99, 102, 241, 0.05);
+      border-radius: var(--radius-md) 0 0 var(--radius-md);
+      display: flex;
+      align-items: center;
+    }
+
+    .task-cell {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 12px;
+      min-height: 80px;
+    }
+
+    .blocking-lane {
+      background: rgba(239, 68, 68, 0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.75rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card.blocked {
+      border-left: 3px solid var(--danger);
+    }
+
+    /* --- LOWER DASHBOARD (3 COLUMNS) --- */
+    .dashboard-row {
+      display: flex;
+      gap: 20px;
+      height: 400px;
+    }
+
+    .panel {
+      background-color: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-header h3 {
+      margin: 0;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+    }
+
+    .panel-content {
+      padding: 18px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Panel 1: Editor */
+    .editor-panel {
+      flex: 1.8;
+    }
+
+    label {
+      display: block;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: var(--bg-body);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      font-family: inherit;
+      box-sizing: border-box;
+      font-size: 0.85rem;
+    }
+
+    /* Panel 2: People Selection (Moved from Grid) */
+    .people-panel {
+      flex: 1.2;
+    }
+
+    .person-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: 0.2s;
+    }
+
+    .person-item:hover {
+      background: rgba(99, 102, 241, 0.1);
+      border-color: var(--accent);
+    }
+
+    .person-item.selected {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--accent);
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.65rem;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-left: auto;
+    }
+
+    /* Panel 3: Activity Log */
+    .log-panel {
+      flex: 1.5;
+    }
+
+    .log-entry {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      margin-bottom: 10px;
+      padding-left: 8px;
+      border-left: 2px solid var(--accent);
+      line-height: 1.4;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TASKBOARD SECTION -->
+  <div class="board-wrapper">
+    <div class="task-grid">
+      <div id="0.0" class="header-cell">Category</div>
+      <div id="0.1" class="header-cell" style="color: var(--danger);">Blocking</div>
+      <div id="0.2" class="header-cell">Todo</div>
+      <div id="0.3" class="header-cell">In Progress</div>
+      <div id="0.4" class="header-cell">Validation</div>
+      <div id="0.5" class="header-cell">Live</div>
+
+      <div class="row-group">
+        <div id="1.0" class="row-label">Internal Tools</div>
+        <div id="1.1" class="task-cell blocking-lane">
+          <div class="card blocked">Log Overflow</div>
+        </div>
+        <div id="1.2" class="task-cell">
+          <div class="card">Audit Script</div>
+        </div>
+        <div id="1.3" class="task-cell"></div>
+        <div id="1.4" class="task-cell"></div>
+        <div id="1.5" class="task-cell"></div>
+      </div>
+
+      <div class="row-group">
+        <div id="2.0" class="row-label">Security Mesh</div>
+        <div id="2.1" class="task-cell blocking-lane"></div>
+        <div id="2.2" class="task-cell"></div>
+        <div id="2.3" class="task-cell">
+          <div class="card">Handshake Fix</div>
+        </div>
+        <div id="2.4" class="task-cell"></div>
+        <div id="2.5" class="task-cell"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOWER DASHBOARD -->
+  <div class="dashboard-row">
+
+    <!-- 1. TASK EDITOR -->
+    <div class="panel editor-panel">
+      <div class="panel-header">
+        <h3>Configuration</h3>
+      </div>
+      <div class="panel-content">
+        <label>Summary</label>
+        <input type="text" placeholder="e.g. Memory leak investigation">
+
+        <label>Target Grid Lane</label>
+        <select>
+          <option>Blocking</option>
+          <option selected>Todo</option>
+          <option>In Progress</option>
+        </select>
+
+        <label>Internal Notes</label>
+        <textarea rows="2" placeholder="Describe blockers or context..."></textarea>
+
+        <button type="button">Update Coordinate State</button>
+      </div>
+    </div>
+
+    <!-- 2. TEAM LIST (INTEGRATED AS ASSIGNEE SELECTOR) -->
+    <div class="panel people-panel">
+      <div class="panel-header">
+        <h3>Select Assignee</h3>
+      </div>
+      <div class="panel-content">
+        <div class="person-item selected">
+          <div class="avatar">JS</div>
+          <div class="info">
+            <div style="font-size:0.75rem; font-weight:600">John Smith</div>
+          </div>
+          <div class="status-dot" style="background: var(--success)"></div>
+        </div>
+        <div class="person-item">
+          <div class="avatar" style="background:#ec4899">AL</div>
+          <div class="info">
+            <div style="font-size:0.75rem; font-weight:600">Alice Lee</div>
+          </div>
+          <div class="status-dot" style="background: var(--success)"></div>
+        </div>
+        <div class="person-item">
+          <div class="avatar" style="background:#f59e0b">SC</div>
+          <div class="info">
+            <div style="font-size:0.75rem; font-weight:600">Sam Chen</div>
+          </div>
+          <div class="status-dot" style="background: var(--danger)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. SYSTEM ACTIVITY -->
+    <div class="panel log-panel">
+      <div class="panel-header">
+        <h3>Queue Log</h3>
+      </div>
+      <div class="panel-content">
+        <div class="log-entry">
+          <span style="color:var(--text-dim)">[14:10]</span> <span style="color:var(--accent)">SYS</span> Grid
+          initialized (6x3).
+        </div>
+        <div class="log-entry" style="border-left-color: var(--danger)">
+          <span style="color:var(--text-dim)">[14:12]</span> <span style="color:var(--danger)">BLK</span> Card 1.1
+          updated status.
+        </div>
+        <div class="log-entry">
+          <span style="color:var(--text-dim)">[14:15]</span> <span style="color:var(--accent)">USR</span> Assignee
+          column detached.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+
+</html>

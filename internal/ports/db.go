@@ -63,55 +63,32 @@ const (
 	CreateTask = "create"
 	UpdateTask = "update"
 
+	EditEvent = "edit-event"
+
 	Todo       = "todo"
 	InProgress = "in progress"
 	Done       = "done"
 	Achieved   = "achieved"
 )
 
-type TaskEventRequest struct {
-	Type      string `json:"event-type"`
-	User      string
-	ProjectID string
-	NewTask
-}
-
 type EventType struct {
 	T string `json:"event-type"`
 }
 
-type DeleteTask struct {
-	ID string
-}
-
-type TaskEvent struct {
-	ID string
-	TaskEventRequest
-	EventTime time.Time
+type TaskID struct {
+	ID string `json:"taskID"`
 }
 
 type TasksRepo interface {
-	LoadSnapshot(ctx context.Context, project_id string) ([]Task, error)
-	CreateSnapshot(ctx context.Context, projectID string, tasks []Task) error
+	LoadSnapshot(ctx context.Context, project_id string) ([]models.Task, error)
+	CreateSnapshot(ctx context.Context, projectID string, tasks []models.Task) error
 }
 
 type EventStore interface {
-	NewEvent(ctx context.Context, project_id string, t TaskEventRequest) (*TaskEvent, error)
-	GetEvents(ctx context.Context, project_id string) ([]TaskEvent, error)
-}
-
-type NewTask struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Deadline    string `json:"deadline"`
-	Status      string `json:"status"`
-}
-
-type Task struct {
-	NewTask
-	ID string `json:"id"`
-
-	// Messages []string
+	NewEvent(ctx context.Context, project_id string, t models.TaskEventRequest) (*models.TaskEvent, error)
+	GetEvents(ctx context.Context, project_id string) ([]models.TaskEvent, error)
+	//get the current state event,
+	// GetEvent(ctx context.Context, event_id string) (*Task, error)
 }
 
 var DatabaseError = errors.New("database adapter failed to execute action")

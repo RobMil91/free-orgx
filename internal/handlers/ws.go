@@ -1,14 +1,17 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 
 	"github.com/RobMil91/free-orgx/internal/core/event"
+	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
 	"github.com/gorilla/websocket"
 )
@@ -23,13 +26,6 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	p.Logger.DebugContext(r.Context(), fmt.Sprintf("user %s attempt ws connect", user.Name))
 
 	projectID := r.PathValue("id")
-
-	previousEvents, err := p.EventsRepo.GetEvents(r.Context(), projectID)
-	if err != nil {
-		p.Logger.ErrorContext(r.Context(), err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
 	//TODO: load the new events, and put them on the board.
 	//Need the code from the observer that can translate the events
@@ -57,7 +53,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subjectObserver, err := event.NewTaskObserver(*wsID, conn, p.Logger, p.TemplatePath, previousEvents)
+	subjectObserver, err := event.NewTaskObserver(*wsID, conn, p.Logger, p.TemplatePath, p.EventsRepo, projectID)
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -114,22 +110,20 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch eTyp.T {
-
 		default:
 			p.Logger.WarnContext(r.Context(), fmt.Sprintf("unkown event type %s", eTyp.T))
 			continue
 
 		case "deleteTask":
-
-			taskCardID, err := parseDelete(msg)
+			taskCardID, err := parseTaskID(msg)
 			if err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
 				continue
 			}
 
-			err = p.handlEvent(r.Context(), ports.TaskEvent{
-				ID: *taskCardID,
-				TaskEventRequest: ports.TaskEventRequest{
+			err = p.handlEvent(r.Context(), models.TaskEvent{
+				EventID: *taskCardID,
+				TaskEventRequest: models.TaskEventRequest{
 					Type: "deleteTask",
 				},
 			}, projectID)
@@ -167,23 +161,115 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w,
 					fmt.Sprintf("no subject project id found, within websocket connection %s", projectID),
 					http.StatusInternalServerError)
-				return
+				continue
 			}
 
 			err = subject.Notify(r.Context(), *newEvent)
 			if err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+				continue
+			}
+			continue
+
+			// it just direct back command, sort them later, it is currently not added to db
+		case "edit":
+			taskCardID, err := parseTaskID(msg)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			p.Logger.DebugContext(r.Context(), fmt.Sprintf("edit event card request %s", *taskCardID))
+
+			events, err := p.EventsRepo.GetEvents(r.Context(), projectID)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			p.Logger.DebugContext(r.Context(), fmt.Sprintf("projectEvents %+v from %s", events, projectID))
+
+			events = models.FilterTaskEvents(events, *taskCardID)
+
+			taskState, err := models.EventsToState(events)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			tmpl := template.Must(template.ParseFiles(p.TemplatePath + "edit_card.html"))
+
+			var buffer bytes.Buffer
+
+			err = tmpl.Execute(&buffer, map[string]string{
+				"Title":       taskState.Title,
+				"Description": taskState.Description,
+				"TaskID":      taskState.TaskID,
+			})
+
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			err = conn.WriteMessage(websocket.TextMessage, buffer.Bytes())
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+		case "edit-event":
+			// p.Logger.WarnContext(r.Context(), fmt.Sprintf("unimplemented event type %s", eTyp.T))
+			// continue
+
+			event, err := parseEdit(msg)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			event.Type = ports.EditEvent
+
+			event.User = user.Name
+
+			event.ProjectID = projectID
+
+			p.Logger.DebugContext(r.Context(),
+				fmt.Sprintf("serialized to %+v",
+					event,
+				))
+
+			p.Logger.DebugContext(r.Context(), fmt.Sprintf("storing new  edit event %+v", *event))
+			newEvent, err := p.EventsRepo.NewEvent(r.Context(), projectID, *event)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			subject, ok := p.TasksSubjects[projectID]
+			if !ok {
+				p.Logger.ErrorContext(r.Context(),
+					fmt.Sprintf("no subject project id found, within websocket connection %s", projectID))
+				http.Error(w,
+					fmt.Sprintf("no subject project id found, within websocket connection %s", projectID),
+					http.StatusInternalServerError)
+				continue
+			}
+
+			err = subject.Notify(r.Context(), *newEvent)
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				continue
 			}
 			continue
 
 		}
-
 	}
 }
 
-func (p *Project) handlEvent(ctx context.Context, te ports.TaskEvent, projectID string) error {
+func (p *Project) handlEvent(ctx context.Context, te models.TaskEvent, projectID string) error {
 	subject, ok := p.TasksSubjects[projectID]
 	if !ok {
 		return fmt.Errorf("no subject project id found, within websocket connection %s", projectID)
@@ -197,8 +283,8 @@ func (p *Project) handlEvent(ctx context.Context, te ports.TaskEvent, projectID 
 	return nil
 }
 
-func parseCreate(b []byte) (*ports.TaskEventRequest, error) {
-	var event ports.TaskEventRequest
+func parseCreate(b []byte) (*models.TaskEventRequest, error) {
+	var event models.TaskEventRequest
 
 	if err := json.Unmarshal(b, &event); err != nil {
 		return nil, err
@@ -207,8 +293,21 @@ func parseCreate(b []byte) (*ports.TaskEventRequest, error) {
 	return &event, nil
 }
 
-func parseDelete(b []byte) (*string, error) {
-	var event ports.DeleteTask
+func parseEdit(b []byte) (*models.TaskEventRequest, error) {
+	var event models.EditTask
+
+	if err := json.Unmarshal(b, &event); err != nil {
+		return nil, err
+	}
+
+	return &models.TaskEventRequest{
+		NewTask: event.NewTask,
+		TaskID:  event.TaskID,
+	}, nil
+}
+
+func parseTaskID(b []byte) (*string, error) {
+	var event ports.TaskID
 
 	if err := json.Unmarshal(b, &event); err != nil {
 		return nil, err

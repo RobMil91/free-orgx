@@ -1,0 +1,39 @@
+<div class="panel editor-panel" id="taskEditor" hx-swap-oob="outerHTML">
+  <div class="panel-header">
+    <h3>Edit {{ .Title }}</h3>
+  </div>
+  <div class="panel-content">
+
+    <form id="taskForm">
+      <label>Title</label>
+
+      <input name="title" type="text" placeholder="{{ .Title }}">
+      <label>Status</label>
+      <select name="status">
+        <!-- todo: select opt to push  -->
+        <option selected="">Todo</option>
+        <!-- <option>Blocking</option> -->
+        <option>In Progress</option>
+        <option>Validation</option>
+        <option>Live</option>
+      </select>
+
+
+      <label>Assignee</label>
+      <select name="assignees">
+        <option value="">Unassigned</option>
+        <option value="user1">User One</option>
+        <option value="user2">User Two</option>
+      </select>
+      <label>Description</label>
+      <textarea name="description" rows="2" placeholder="{{ .Description }}"></textarea>
+
+      <input type="hidden" id="event-type" name="event-type" value="edit-event">
+
+      <!-- this is the row id  for one task -->
+      <input type="hidden" name="taskID" value="{{ .TaskID }}">
+
+      <button id="taskForm" type="button" ws-send>Update Coordinate State</button>
+  </div>
+  </form>
+</div>
