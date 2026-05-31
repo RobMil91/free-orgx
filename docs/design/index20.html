@@ -12,15 +12,15 @@
     rel="stylesheet">
   <style>
     :root {
-      --bg-body: #f8fafc;
-      --bg-surface: #1e293b;
-      --bg-card: #334155;
-      --text-main: #0f172a;
-      --text-dim: #94a3b8;
-      --accent: #6366f1;
-      --danger: #ef4444;
-      --success: #10b981;
-      --border: rgba(255, 255, 255, 0.05);
+      --bg-body: #f1f5f9;
+      --bg-surface: #ffffff;
+      --bg-card: #f8fafc;
+      --text-main: #000000;
+      --text-dim: #64748b;
+      --accent: #4f46e5;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --border: rgba(0, 0, 0, 0.08);
       --radius-lg: 16px;
       --radius-md: 10px;
     }
@@ -42,12 +42,11 @@
       padding: 20px;
       border-radius: var(--radius-lg);
       border: 1px solid var(--border);
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
     }
 
     .task-grid {
       display: grid;
-      /* Label(180px) | Blocking | Todo | In Progress | Validation | Live */
       grid-template-columns: 180px repeat(5, 1fr);
       gap: 10px;
     }
@@ -72,20 +71,21 @@
       font-weight: 600;
       font-size: 0.8rem;
       color: var(--accent);
-      background: rgba(99, 102, 241, 0.05);
+      background: rgba(79, 70, 229, 0.05);
       border-radius: var(--radius-md) 0 0 var(--radius-md);
       display: flex;
       align-items: center;
     }
 
     .task-cell {
-      background: rgba(255, 255, 255, 0.02);
+      background: rgba(0, 0, 0, 0.02);
       padding: 12px;
       min-height: 80px;
+      border-radius: 4px;
     }
 
     .blocking-lane {
-      background: rgba(239, 68, 68, 0.02);
+      background: rgba(220, 38, 38, 0.03);
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -95,16 +95,17 @@
       background: var(--bg-card);
       padding: 10px;
       border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
       font-size: 0.75rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+      font-weight: 500;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
     }
 
     .card.blocked {
       border-left: 3px solid var(--danger);
     }
 
-    /* --- LOWER DASHBOARD (3 COLUMNS) --- */
+    /* --- LOWER DASHBOARD --- */
     .dashboard-row {
       display: flex;
       gap: 20px;
@@ -118,12 +119,13 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
 
     .panel-header {
       padding: 16px 20px;
       border-bottom: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.1);
+      background: rgba(0, 0, 0, 0.02);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -161,7 +163,7 @@
     select,
     textarea {
       width: 100%;
-      background: var(--bg-body);
+      background: #fdfdfd;
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 10px;
@@ -172,7 +174,7 @@
       font-size: 0.85rem;
     }
 
-    /* Panel 2: People Selection (Moved from Grid) */
+    /* Panel 2: Assignee Selector */
     .people-panel {
       flex: 1.2;
     }
@@ -184,19 +186,19 @@
       padding: 10px;
       border-radius: 8px;
       margin-bottom: 8px;
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(0, 0, 0, 0.02);
       cursor: pointer;
       border: 1px solid transparent;
       transition: 0.2s;
     }
 
     .person-item:hover {
-      background: rgba(99, 102, 241, 0.1);
+      background: rgba(79, 70, 229, 0.05);
       border-color: var(--accent);
     }
 
     .person-item.selected {
-      background: rgba(99, 102, 241, 0.2);
+      background: rgba(79, 70, 229, 0.1);
       border-color: var(--accent);
     }
 
@@ -205,6 +207,7 @@
       height: 28px;
       border-radius: 50%;
       background: var(--accent);
+      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -231,6 +234,7 @@
       padding-left: 8px;
       border-left: 2px solid var(--accent);
       line-height: 1.4;
+      color: var(--text-main);
     }
 
     button {
@@ -242,52 +246,53 @@
       font-weight: 700;
       cursor: pointer;
       width: 100%;
+      transition: opacity 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- TASKBOARD SECTION -->
   <div class="board-wrapper">
     <div class="task-grid">
-      <div id="0.0" class="header-cell">Category</div>
-      <div id="0.1" class="header-cell" style="color: var(--danger);">Blocking</div>
-      <div id="0.2" class="header-cell">Todo</div>
-      <div id="0.3" class="header-cell">In Progress</div>
-      <div id="0.4" class="header-cell">Validation</div>
-      <div id="0.5" class="header-cell">Live</div>
+      <div id="1.1" class="header-cell">Category</div>
+      <div id="1.2" class="header-cell" style="color: var(--danger);">Blocking</div>
+      <div id="1.3" class="header-cell">Todo</div>
+      <div id="1.4" class="header-cell">In Progress</div>
+      <div id="1.5" class="header-cell">Validation</div>
+      <div id="1.6" class="header-cell">Live</div>
 
       <div class="row-group">
-        <div id="1.0" class="row-label">Internal Tools</div>
-        <div id="1.1" class="task-cell blocking-lane">
+        <div id="2.1" class="row-label">Internal Tools</div>
+        <div id="2.2" class="task-cell blocking-lane">
           <div class="card blocked">Log Overflow</div>
         </div>
-        <div id="1.2" class="task-cell">
-          <div class="card">Audit Script</div>
-        </div>
-        <div id="1.3" class="task-cell"></div>
-        <div id="1.4" class="task-cell"></div>
-        <div id="1.5" class="task-cell"></div>
-      </div>
-
-      <div class="row-group">
-        <div id="2.0" class="row-label">Security Mesh</div>
-        <div id="2.1" class="task-cell blocking-lane"></div>
-        <div id="2.2" class="task-cell"></div>
         <div id="2.3" class="task-cell">
-          <div class="card">Handshake Fix</div>
+          <div class="card">Audit Script</div>
         </div>
         <div id="2.4" class="task-cell"></div>
         <div id="2.5" class="task-cell"></div>
+        <div id="2.6" class="task-cell"></div>
+      </div>
+
+      <div class="row-group">
+        <div id="3.1" class="row-label">Security Mesh</div>
+        <div id="3.2" class="task-cell blocking-lane"></div>
+        <div id="3.3" class="task-cell"></div>
+        <div id="3.4" class="task-cell">
+          <div class="card">Handshake Fix</div>
+        </div>
+        <div id="3.5" class="task-cell"></div>
+        <div id="3.6" class="task-cell"></div>
       </div>
     </div>
   </div>
 
-  <!-- LOWER DASHBOARD -->
   <div class="dashboard-row">
-
-    <!-- 1. TASK EDITOR -->
     <div class="panel editor-panel">
       <div class="panel-header">
         <h3>Configuration</h3>
@@ -295,22 +300,18 @@
       <div class="panel-content">
         <label>Summary</label>
         <input type="text" placeholder="e.g. Memory leak investigation">
-
         <label>Target Grid Lane</label>
         <select>
           <option>Blocking</option>
           <option selected>Todo</option>
           <option>In Progress</option>
         </select>
-
         <label>Internal Notes</label>
         <textarea rows="2" placeholder="Describe blockers or context..."></textarea>
-
         <button type="button">Update Coordinate State</button>
       </div>
     </div>
 
-    <!-- 2. TEAM LIST (INTEGRATED AS ASSIGNEE SELECTOR) -->
     <div class="panel people-panel">
       <div class="panel-header">
         <h3>Select Assignee</h3>
@@ -319,48 +320,46 @@
         <div class="person-item selected">
           <div class="avatar">JS</div>
           <div class="info">
-            <div style="font-size:0.75rem; font-weight:600">John Smith</div>
+            <div style="font-size:0.75rem; font-weight:700">John Smith</div>
           </div>
           <div class="status-dot" style="background: var(--success)"></div>
         </div>
         <div class="person-item">
-          <div class="avatar" style="background:#ec4899">AL</div>
+          <div class="avatar" style="background:#db2777">AL</div>
           <div class="info">
-            <div style="font-size:0.75rem; font-weight:600">Alice Lee</div>
+            <div style="font-size:0.75rem; font-weight:700">Alice Lee</div>
           </div>
           <div class="status-dot" style="background: var(--success)"></div>
         </div>
         <div class="person-item">
-          <div class="avatar" style="background:#f59e0b">SC</div>
+          <div class="avatar" style="background:#d97706">SC</div>
           <div class="info">
-            <div style="font-size:0.75rem; font-weight:600">Sam Chen</div>
+            <div style="font-size:0.75rem; font-weight:700">Sam Chen</div>
           </div>
           <div class="status-dot" style="background: var(--danger)"></div>
         </div>
       </div>
     </div>
 
-    <!-- 3. SYSTEM ACTIVITY -->
     <div class="panel log-panel">
       <div class="panel-header">
         <h3>Queue Log</h3>
       </div>
       <div class="panel-content">
         <div class="log-entry">
-          <span style="color:var(--text-dim)">[14:10]</span> <span style="color:var(--accent)">SYS</span> Grid
-          initialized (6x3).
+          <span style="color:var(--text-dim)">[14:10]</span> <span
+            style="color:var(--accent); font-weight:600">SYS</span> Grid initialized.
         </div>
         <div class="log-entry" style="border-left-color: var(--danger)">
-          <span style="color:var(--text-dim)">[14:12]</span> <span style="color:var(--danger)">BLK</span> Card 1.1
-          updated status.
+          <span style="color:var(--text-dim)">[14:12]</span> <span
+            style="color:var(--danger); font-weight:600">BLK</span> Card 1.1 updated.
         </div>
         <div class="log-entry">
-          <span style="color:var(--text-dim)">[14:15]</span> <span style="color:var(--accent)">USR</span> Assignee
-          column detached.
+          <span style="color:var(--text-dim)">[14:15]</span> <span
+            style="color:var(--accent); font-weight:600">USR</span> Assignee changed.
         </div>
       </div>
     </div>
-
   </div>
 
 </body>
