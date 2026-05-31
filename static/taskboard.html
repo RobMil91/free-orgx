@@ -68,10 +68,10 @@
 
           <form id="taskForm">
             <label>Title</label>
-            <input type="text" placeholder="e.g. Memory leak investigation">
+            <input name="title" type="text" placeholder="e.g. Memory leak investigation">
 
             <label>Status</label>
-            <select>
+            <select name="status">
               <option selected="">Todo</option>
               <option>Blocking</option>
               <option>In Progress</option>
@@ -82,24 +82,21 @@
 
 
             <label>Target</label>
-            <select id="category-targets">
+            <select name="target" id="category-targets">
               <option selected="">New</option>
             </select>
 
-            <div class="form-group">
-              <label>Assignee</label>
-              <select>
-                <option value="">Unassigned</option>
-                <option value="user1">User One</option>
-                <option value="user2">User Two</option>
-              </select>
-            </div>
+            <label>Assignee</label>
+            <select name="assignees">
+              <option value="">Unassigned</option>
+              <option value="user1">User One</option>
+              <option value="user2">User Two</option>
+            </select>
             <label>Description</label>
-            <textarea rows="2" placeholder="Describe blockers or context..."></textarea>
+            <textarea name="description" rows="2" placeholder="Describe blockers or context..."></textarea>
 
-            <div class="form-group">
-              <input type="hidden" id="event-type" name="event-type" value="create">
-            </div>
+            <input type="hidden" id="event-type" name="event-type" value="create">
+
             <button id="taskForm" type="button" ws-send>Update Coordinate State</button>
         </div>
         </form>
