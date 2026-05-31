@@ -233,6 +233,13 @@
             border-top: 1px solid var(--gray-200);
         }
 
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Creates 3 equal columns */
+  gap: 10px; /* Optional spacing between columns */
+}
+
+
         .empty-state {
             text-align: center;
             padding: 32px 16px;

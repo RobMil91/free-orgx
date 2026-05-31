@@ -31,42 +31,54 @@
 
 
   <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
-    <main class="board">
-      <div class="columns">
-        <div class="column" data-status="todo" id="todo-column" hx-swap-oob="beforeend">
-          <div class="column-header">
-            <div class="column-title">
-              <span class="column-icon"></span>
-              <h2>To Do</h2>
-            </div>
-            <span class="column-count" data-count="todo">0</span>
-          </div>
-          <div class="column-body" id="todo-body-1" data-column="todo"></div>
-          <div class="column-body" id="todo-body-2" data-column="todo"></div>
-        </div>
 
-        <div class="column" data-status="in-progress">
-          <div class="column-header">
-            <div class="column-title">
-              <span class="column-icon"></span>
-              <h2>In Progress</h2>
-            </div>
-            <span class="column-count" data-count="in-progress">0</span>
-          </div>
-          <div class="column-body" data-column="in-progress"></div>
-        </div>
-        <div class="column" data-status="done">
-          <div class="column-header">
-            <div class="column-title">
-              <span class="column-icon"></span>
-              <h2>Done</h2>
-            </div>
-            <span class="column-count" data-count="done">0</span>
-          </div>
-          <div class="column-body" data-column="done"></div>
-        </div>
-      </div>
-    </main>
+    <div class="row">
+      <div class="column">Column 1</div>
+      <div class="column">Column 2</div>
+      <div class="column">Column 3</div>
+    </div>
+
+
+
+
+
+
+    <!-- <main class="board"> -->
+    <!--   <div class="columns"> -->
+    <!--     <div class="column" data-status="todo" id="todo-column" hx-swap-oob="beforeend"> -->
+    <!--       <div class="column-header"> -->
+    <!--         <div class="column-title"> -->
+    <!--           <span class="column-icon"></span> -->
+    <!--           <h2>To Do</h2> -->
+    <!--         </div> -->
+    <!--         <span class="column-count" data-count="todo">0</span> -->
+    <!--       </div> -->
+    <!--       <div class="column-body" id="todo-body-1" data-column="todo"></div> -->
+    <!--       <div class="column-body" id="todo-body-2" data-column="todo"></div> -->
+    <!--     </div> -->
+    <!---->
+    <!--     <div class="column" data-status="in-progress"> -->
+    <!--       <div class="column-header"> -->
+    <!--         <div class="column-title"> -->
+    <!--           <span class="column-icon"></span> -->
+    <!--           <h2>In Progress</h2> -->
+    <!--         </div> -->
+    <!--         <span class="column-count" data-count="in-progress">0</span> -->
+    <!--       </div> -->
+    <!--       <div class="column-body" data-column="in-progress"></div> -->
+    <!--     </div> -->
+    <!--     <div class="column" data-status="done"> -->
+    <!--       <div class="column-header"> -->
+    <!--         <div class="column-title"> -->
+    <!--           <span class="column-icon"></span> -->
+    <!--           <h2>Done</h2> -->
+    <!--         </div> -->
+    <!--         <span class="column-count" data-count="done">0</span> -->
+    <!--       </div> -->
+    <!--       <div class="column-body" data-column="done"></div> -->
+    <!--     </div> -->
+    <!--   </div> -->
+    <!-- </main> -->
     <div id="pageend">
       <a hx-get="/projects/{{ .ID }}/tasks/create" hx-target="#pageend" class="btn btn-secondary">Create</a>
     </div>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sleek Taskboard - Light Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* Light theme palette - Bluish-White & Indigo */
+      --bg-body: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-input: #f1f5f9;
+      --text-main: #1e293b;
+      --text-dim: #64748b;
+      --accent: #4f46e5;
+      --danger: #ef4444;
+      --success: #10b981;
+      --border: #e2e8f0;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* --- TASKBOARD --- */
+    .board-wrapper {
+      background-color: var(--bg-surface);
+      padding: 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .task-grid {
+      display: grid;
+      grid-template-columns: 180px repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .header-cell {
+      padding: 10px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.05em;
+    }
+
+    .row-label {
+      grid-column: 1;
+      padding: 15px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: #f5f7ff;
+      border-radius: var(--radius-md) 0 0 var(--radius-md);
+      display: flex;
+      align-items: center;
+    }
+
+    .task-cell {
+      background: #fcfdfe;
+      padding: 12px;
+      min-height: 80px;
+      border-radius: 4px;
+    }
+
+    .blocking-lane {
+      background: rgba(239, 68, 68, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border: 1px dashed rgba(239, 68, 68, 0.1);
+    }
+
+    .card {
+      background: var(--bg-card);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .card.blocked {
+      border-left: 4px solid var(--danger);
+    }
+
+    /* --- LOWER DASHBOARD --- */
+    .dashboard-row {
+      display: flex;
+      gap: 20px;
+      height: 500px;
+    }
+
+    .panel {
+      background-color: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: #fcfdfe;
+    }
+
+    .panel-header h3 {
+      margin: 0;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    .panel-content {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Configuration Panel */
+    .editor-panel {
+      flex: 2;
+    }
+
+    label {
+      display: block;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text-main);
+      margin-bottom: 15px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: 2px solid var(--accent);
+      background: white;
+    }
+
+    /* Multi-Assignee List */
+    .assignee-selector {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 140px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+
+    .assignee-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+    }
+
+    .assignee-option:last-child {
+      border: none;
+    }
+
+    .assignee-option input {
+      width: auto;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    /* Metrics Panel */
+    .metrics-panel {
+      flex: 1;
+    }
+
+    .stat-card {
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+
+    .stat-lbl {
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    /* Log Panel */
+    .log-panel {
+      flex: 1.5;
+    }
+
+    .log-entry {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      margin-bottom: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      background: #f8fafc;
+      border-left: 3px solid var(--accent);
+      line-height: 1.4;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity 0.2s;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TASKBOARD SECTION -->
+  <div class="board-wrapper">
+    <div class="task-grid">
+      <div id="0.0" class="header-cell">Category</div>
+      <div id="0.1" class="header-cell" style="color: var(--danger);">Blocking</div>
+      <div id="0.2" class="header-cell">Todo</div>
+      <div id="0.3" class="header-cell">In Progress</div>
+      <div id="0.4" class="header-cell">Validation</div>
+      <div id="0.5" class="header-cell">Live</div>
+
+      <div class="row-group">
+        <div id="1.0" class="row-label">Internal API</div>
+        <div id="1.1" class="task-cell blocking-lane">
+          <div class="card blocked">CORS Header Error</div>
+          <div class="card blocked">Rate Limit 429</div>
+        </div>
+        <div id="1.2" class="task-cell">
+          <div class="card">JWT Refresh</div>
+        </div>
+        <div id="1.3" class="task-cell"></div>
+        <div id="1.4" class="task-cell"></div>
+        <div id="1.5" class="task-cell"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOWER DASHBOARD -->
+  <div class="dashboard-row">
+
+    <!-- 1. CONFIGURATION -->
+    <div class="panel editor-panel">
+      <div class="panel-header">
+        <h3>Task Configuration</h3>
+      </div>
+      <div class="panel-content">
+        <label>Summary</label>
+        <input type="text" placeholder="Describe the task...">
+
+        <label>Assigned To (Multi-Select)</label>
+        <div class="assignee-selector">
+          <label class="assignee-option"><input type="checkbox" checked> John Smith (Lead)</label>
+          <label class="assignee-option"><input type="checkbox"> Alice Lee (Design)</label>
+          <label class="assignee-option"><input type="checkbox"> Sam Chen (Ops)</label>
+          <label class="assignee-option"><input type="checkbox"> Mike Ross (Dev)</label>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div><label>Status</label><select>
+              <option>Todo</option>
+              <option>Blocking</option>
+            </select></div>
+          <div><label>Priority</label><select>
+              <option>Medium</option>
+              <option>High</option>
+            </select></div>
+        </div>
+
+        <button type="button">Update Workspace</button>
+      </div>
+    </div>
+
+    <!-- 2. ANALYTICS -->
+    <div class="panel metrics-panel">
+      <div class="panel-header">
+        <h3>Grid Health</h3>
+      </div>
+      <div class="panel-content">
+        <div class="stat-card">
+          <div class="stat-val">08</div>
+          <div class="stat-lbl">Active Cards</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" style="color: var(--danger)">02</div>
+          <div class="stat-lbl">Blockers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" style="color: var(--success)">100%</div>
+          <div class="stat-lbl">System Uptime</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. FEED -->
+    <div class="panel log-panel">
+      <div class="panel-header">
+        <h3>Activity Stream</h3>
+      </div>
+      <div class="panel-content">
+        <div class="log-entry"><span style="color:var(--text-dim)">[10:15]</span> <span
+            style="color:var(--accent)">UI</span> Light theme applied successfully.</div>
+        <div class="log-entry" style="border-left-color: var(--danger)"><span
+            style="color:var(--text-dim)">[10:18]</span> <span style="color:var(--danger)">BLK</span> Card 1.1 added to
+          Blocking lane.</div>
+        <div class="log-entry"><span style="color:var(--text-dim)">[10:22]</span> <span
+            style="color:var(--accent)">SYS</span> Checkbox list initialized.</div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+
+</html>
