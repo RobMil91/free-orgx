@@ -34,7 +34,8 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	//TODO: load the new events, and put them on the board.
 	//Need the code from the observer that can translate the events
 	//they all need to be send.
-	p.Logger.DebugContext(r.Context(), fmt.Sprintf("attempt to subscribe to task events for project %s", projectID))
+	p.Logger.DebugContext(r.Context(),
+		fmt.Sprintf("attempt to subscribe to task events for project %s", projectID))
 
 	//TODO: ws connection is dual -> need to pass consumer and producer
 	var upgrader = websocket.Upgrader{
@@ -161,8 +162,11 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 			subject, ok := p.TasksSubjects[projectID]
 			if !ok {
-				p.Logger.ErrorContext(r.Context(), fmt.Sprintf("no subject project id found, within websocket connection %s", projectID))
-				http.Error(w, fmt.Sprintf("no subject project id found, within websocket connection %s", projectID), http.StatusInternalServerError)
+				p.Logger.ErrorContext(r.Context(),
+					fmt.Sprintf("no subject project id found, within websocket connection %s", projectID))
+				http.Error(w,
+					fmt.Sprintf("no subject project id found, within websocket connection %s", projectID),
+					http.StatusInternalServerError)
 				return
 			}
 
@@ -205,8 +209,6 @@ func parseCreate(b []byte) (*ports.TaskEventRequest, error) {
 
 func parseDelete(b []byte) (*string, error) {
 	var event ports.DeleteTask
-	//TODO need to parse the id that is send.. on delete type
-	//="retrieved via websocket message: {\"event-type\":\"deleteTask\",\"taskID\":\"Lm4WAmhN2OsExk3BPjWHyw==\"
 
 	if err := json.Unmarshal(b, &event); err != nil {
 		return nil, err
