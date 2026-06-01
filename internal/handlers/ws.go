@@ -24,13 +24,6 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 	projectID := r.PathValue("id")
 
-	previousEvents, err := p.EventsRepo.GetEvents(r.Context(), projectID)
-	if err != nil {
-		p.Logger.ErrorContext(r.Context(), err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	//TODO: load the new events, and put them on the board.
 	//Need the code from the observer that can translate the events
 	//they all need to be send.
@@ -57,7 +50,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subjectObserver, err := event.NewTaskObserver(*wsID, conn, p.Logger, p.TemplatePath, previousEvents)
+	subjectObserver, err := event.NewTaskObserver(*wsID, conn, p.Logger, p.TemplatePath, p.EventsRepo, projectID)
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

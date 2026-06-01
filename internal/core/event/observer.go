@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"strconv"
 
 	"github.com/RobMil91/free-orgx/internal/ports"
 	"github.com/gorilla/websocket"
@@ -78,13 +79,16 @@ type TaskObserver struct {
 	Conn         *websocket.Conn
 	Logger       *slog.Logger
 	TemplatePath string
+	TaskRepo     ports.EventStore
+	ProjectID    string
 }
 
 func NewTaskObserver(id string,
 	conn *websocket.Conn,
 	l *slog.Logger,
 	tp string,
-	p []ports.TaskEvent,
+	t ports.EventStore,
+	pID string,
 ) (*TaskObserver, error) {
 
 	newObserver := TaskObserver{
@@ -92,9 +96,17 @@ func NewTaskObserver(id string,
 		Conn:         conn,
 		Logger:       l,
 		TemplatePath: tp,
+		TaskRepo:     t,
+		ProjectID:    pID,
 	}
 
-	for _, e := range p {
+	previousEvents, err := newObserver.TaskRepo.GetEvents(context.TODO(), pID)
+	if err != nil {
+		newObserver.Logger.ErrorContext(context.TODO(), err.Error())
+		return nil, err
+	}
+
+	for _, e := range previousEvents {
 		if err := newObserver.update(context.Background(), e); err != nil {
 			return nil, fmt.Errorf("failed to send e (%+v), [%w]", e, err)
 		}
@@ -149,10 +161,16 @@ func (o *TaskObserver) toHtml(t ports.TaskEvent) ([]byte, error) {
 
 	var buffer bytes.Buffer
 
-	err := tmpl.Execute(&buffer, map[string]string{
+	createEvents, err := o.TaskRepo.GetEvents(context.TODO(), o.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tmpl.Execute(&buffer, map[string]string{
 		"Title":       t.Title,
 		"Description": t.Description,
 		"ID":          t.ID,
+		"RowNumber":   strconv.Itoa(len(createEvents) + 1),
 	})
 
 	if err != nil {
