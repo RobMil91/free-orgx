@@ -35,7 +35,7 @@
 
     .task-grid {
       display: grid;
-      grid-template-columns: 180px repeat(5, 1fr);
+      grid-template-columns: 180px repeat(3, 1fr);
       gap: 10px;
     }
 
