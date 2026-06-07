@@ -107,18 +107,15 @@ func NewTaskObserver(id string,
 		return nil, err
 	}
 
+	//can be refactored into one html send.
+
 	//calculate only the events that need to be send
 	// create event plus update to newest state
 	// per row
 
 	for _, e := range previousEvents {
 		if e.Type == "create" {
-			// send create row without sending the last event
-
-			//create row event
-
 			if err := newObserver.update(context.Background(), models.TaskEvent{
-
 				TaskEventRequest: models.TaskEventRequest{
 					TaskID:    e.TaskID,
 					Type:      "create-row",
@@ -128,11 +125,16 @@ func NewTaskObserver(id string,
 				return nil, fmt.Errorf("failed to send event (%+v), because [%w]", e, err)
 			}
 
-			_, event, err := newObserver.getLastTaskStatus(context.Background(), e)
+			state, event, err := newObserver.getLastTaskStatus(context.Background(), e)
 			if err != nil {
 				return nil, fmt.Errorf("could not scrap history to state %w", err)
 			}
 
+			if event.Type == "create" && state.Status == "Todo" {
+				newObserver.Logger.DebugContext(context.TODO(), "changed event type")
+				event.Type = ports.EditEvent
+			}
+			//if last event is only an create this will create an extra row...
 			if err := newObserver.update(context.Background(), *event); err != nil {
 				return nil, fmt.Errorf("failed to send event (%+v), because [%w]", e, err)
 			}
@@ -163,6 +165,7 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 		if err != nil {
 			return err
 		}
+
 	case "create":
 		msg, err := o.rowAndCard(t)
 		if err != nil {
@@ -232,28 +235,48 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 }
 
 func (o *TaskObserver) getLastTaskStatus(ctx context.Context, t models.TaskEvent) (*models.Task, *models.TaskEvent, error) {
+	o.Logger.DebugContext(ctx, fmt.Sprintf("getting events for project %s", t.ProjectID))
 	allEvents, err := o.Events.GetEvents(ctx, t.ProjectID)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	o.Logger.DebugContext(ctx, fmt.Sprintf("found events for project %d", len(allEvents)))
+
 	var rowEvents []models.TaskEvent
 
+	o.Logger.DebugContext(ctx, fmt.Sprintf("collecting taskID %s", t.TaskID))
 	for _, e := range allEvents {
+		// o.Logger.DebugContext(ctx, fmt.Sprintf("comparing %s %s", e.TaskID, t.TaskID))
 		if e.TaskID == t.TaskID {
 			rowEvents = append(rowEvents, e)
 		}
 	}
 
-	if len(rowEvents) < 2 {
+	o.Logger.DebugContext(ctx, fmt.Sprintf("found events %d", len(rowEvents)))
+	o.Logger.DebugContext(ctx, fmt.Sprintf("found events %+v", rowEvents))
+
+	// we need to filter for task, but what if it is acutally just the first create?
+	if len(rowEvents) < 1 {
 		return nil, nil, fmt.Errorf("did not find  enough row events for taskID %s, in project %s, events %d", t.TaskID, t.ProjectID, len(rowEvents))
+	}
+
+	// if len(rowEvents) == 1 && rowEvents[0].Type =="create" {
+	if len(rowEvents) == 1 {
+		return &models.Task{
+			TaskID:  rowEvents[0].TaskID,
+			NewTask: rowEvents[0].NewTask,
+		}, &rowEvents[0], nil
 	}
 
 	// all the events should already be in database
 	// meaning we need to update fromm n-1 to n
 	// the send event should contain the new data of n, which is bad... probably should ignore.
+	//
+	// o.Logger.DebugContext(ctx, fmt.Sprintf("events to merge %+v", rowEvents[len(rowEvents)-1:]))
 
-	oldState, err := models.EventsToState(rowEvents[:len(rowEvents)-1])
+	//skip last element
+	oldState, err := models.EventsToState(rowEvents)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -264,7 +287,6 @@ func (o *TaskObserver) getLastTaskStatus(ctx context.Context, t models.TaskEvent
 }
 
 func (o *TaskObserver) updateRowCard(ctx context.Context, i models.CardInput) error {
-
 	tmpl := template.Must(template.ParseFiles(o.TemplatePath + "card.html"))
 
 	var buffer2 bytes.Buffer

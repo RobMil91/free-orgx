@@ -1,7 +1,7 @@
 package models
 
 import (
-	"errors"
+	"fmt"
 	"time"
 )
 
@@ -41,13 +41,11 @@ type TaskEvent struct {
 }
 
 func EventsToState(events []TaskEvent) (*Task, error) {
-
 	var createEvent TaskEvent
 	var otherEvents []TaskEvent
 
 	found := false
 	for _, e := range events {
-
 		if e.Type == "create" {
 			createEvent = e
 			found = true
@@ -58,10 +56,17 @@ func EventsToState(events []TaskEvent) (*Task, error) {
 	}
 
 	if !found {
-		return nil, errors.New("no create event found")
+		return nil, fmt.Errorf("no create event found %+v", events)
 	}
 
 	current := createEvent
+
+	// if len(otherEvents) == 1 {
+	// 	return &Task{
+	// 		NewTask: current.NewTask,
+	// 		TaskID:  current.TaskID,
+	// 	}, nil
+	// }
 
 	for _, o := range otherEvents {
 		updated, newTask := Diff(current.NewTask, o.NewTask)
