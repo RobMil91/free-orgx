@@ -190,6 +190,9 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 			return fmt.Errorf("could not get state and newest Event %w", err)
 		}
 
+		o.Logger.DebugContext(ctx, fmt.Sprintf("oldState %+v", oldState))
+		o.Logger.DebugContext(ctx, fmt.Sprintf("newest event %+v", newestEvent))
+
 		updated, updatedTask := models.Diff(oldState.NewTask, newestEvent.NewTask)
 
 		if updated.Status {
@@ -276,7 +279,7 @@ func (o *TaskObserver) getLastTaskStatus(ctx context.Context, t models.TaskEvent
 	// o.Logger.DebugContext(ctx, fmt.Sprintf("events to merge %+v", rowEvents[len(rowEvents)-1:]))
 
 	//skip last element
-	oldState, err := models.EventsToState(rowEvents)
+	oldState, err := models.EventsToState(rowEvents[:len(rowEvents)-1])
 	if err != nil {
 		return nil, nil, err
 	}
