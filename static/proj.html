@@ -1,10 +1,8 @@
-        <li class="project-item">
-          <span class="project-name">{{.Name}}</span>
-          <span class="project-id">ID: {{.ID}}</span>
-                <button 
-                    hx-delete="project/delete/{{.ID}}"
-                    hx-target="closest li"
-                    hx-swap="outerHTML">
-                    Delete
-                </button>
-        </li>
+<li class="project-item">
+  <a href="/projects/{{ .ID }}/tasks" style="text-decoration: none;">
+    <span class="project-name">{{.Name}}</span>
+    <span class="project-id">ID: {{.ID}}</span>
+    <button hx-delete="project/delete/{{.ID}}" hx-target="closest li" hx-swap="outerHTML">
+      Delete
+    </button>
+</li>

@@ -315,7 +315,6 @@ func (p *Project) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//not needed since auth gives me user...
 	projectName := r.FormValue("name")
 	if projectName == "" {
 		w.Write([]byte("Project name is required"))

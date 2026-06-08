@@ -51,7 +51,7 @@
     {{end}}
 
     <div>
-      <form hx-post="/project/create" hx-trigger="submit" hx-target="#projects" hx-swap="beforeend">
+      <form hx-post="/project/create" hx-trigger="submit" hx-target="#projects" hx-swap="afterbegin">
         <input type="text" name="name" placeholder="Enter project name" required>
         <button type="submit"> Create </button>
       </form>
