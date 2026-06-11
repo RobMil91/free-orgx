@@ -1,9 +1,9 @@
 <div class="row-group" id="rows" hx-swap-oob="beforeend">
   <input type="hidden" id="{{ .ID }}">
-  <div id="{{ .RowNumber }}.Todo" class="task-cell">
+  <div id="{{ .RowNumber }}.Todo" class="task-cell" ondragover="allowDrop(event)" ondrop="drop(event)">
   </div>
-  <div id="{{ .RowNumber }}.InProgress" class="task-cell">
+  <div id="{{ .RowNumber }}.InProgress" class="task-cell" ondragover="allowDrop(event)" ondrop="drop(event)">
   </div>
-  <div id="{{ .RowNumber }}.Validation" class="task-cell"></div>
-  <div id="{{ .RowNumber }}.Live" class="task-cell"></div>
+  <div id="{{ .RowNumber }}.Validation" class="task-cell" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+  <div id="{{ .RowNumber }}.Live" class="task-cell" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
 </div>

@@ -137,6 +137,28 @@
     <!--   <a hx-get="/projects/{{ .ID }}/tasks/create" hx-target="#pageend" class="btn btn-secondary">Create</a> -->
     <!-- </div> -->
 </div>
+<script>
+  function drag(ev) {
+    console.log("drag ")
+    console.log(ev)
+    ev.dataTransfer.setData("id", ev.target.id);
+  }
+
+  function allowDrop(ev) {
+    console.log("allow Drop")
+    console.log(ev)
+    ev.preventDefault();
+  }
+
+  function drop(ev) {
+    console.log(" Drop")
+    console.log(ev)
+    ev.preventDefault();
+    var data = ev.dataTransfer.getData("id");
+    ev.target.appendChild(document.getElementById(data));
+  }
+
+</script>
 </body>
 
 </html>
