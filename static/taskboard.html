@@ -136,7 +136,6 @@
 </div>
 <script>
 
-
   function allowDrop(ev) {
     ev.preventDefault();
   }
@@ -144,10 +143,8 @@
   function drop(ev) {
     ev.preventDefault();
     var taskID = ev.dataTransfer.getData("taskId");
-    console.log("taskID: ", taskID)
     var dropZoneId = ev.target.id;
 
-    console.log("Drop Zone ID:", dropZoneId);
 
     const arr = dropZoneId.split(".")
 
@@ -156,13 +153,10 @@
       targetStatus = "In Progress"
     }
 
-    console.log(targetStatus)
 
     const querID = "sendBtn"
     const element = document.querySelector('#' + querID);
-    console.log(element)
     element.setAttribute('hx-vals', `{"taskID": "${taskID}", "event-type": "edit-event", "status": "${targetStatus}"}`);
-    console.log(element)
     htmx.trigger(`#sendBtn`, 'click');
   }
 
