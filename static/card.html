@@ -1,5 +1,5 @@
 <div class="row-group" id="{{ .CardPosition }}" hx-swap-oob="innerHTML">
-  <form id="cardContent" draggable="true">
+  <form id="cardContent" draggable="true" ondragstart="event.dataTransfer.setData('taskId', '{{ .ID }}')">
     <input type="hidden" name="event-type" value="edit">
     <input type="hidden" name="position" value="{{ .CardPosition }}.Todo">
     <input type="hidden" name="taskID" value="{{ .ID }}">
