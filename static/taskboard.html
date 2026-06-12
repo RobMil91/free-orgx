@@ -164,7 +164,14 @@
     //     const element = document.getElementById('cardContent');
     // console.log(element)
     const sendElement = document.createElement('div');
-    sendElement.classList.add('ws-send');
+
+    // 2. Add the custom boolean-style attribute 'ws-send'
+    // Setting the value to an empty string or the attribute name is standard for boolean-like custom attrs
+    sendElement.setAttribute('ws-send', '');
+
+    // 3. Set the hx-trigger attribute
+    sendElement.setAttribute('hx-trigger', 'click');
+    // sendElement.classList.add('ws-send');
     // const sendElement = '<div ws-send  hx-trigger="click" ></div>'
     console.log(sendElement)
     // const elt = document.body;
