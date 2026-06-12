@@ -132,7 +132,7 @@
       </div>
     </div>
     <!-- HTML -->
-    <button id="sendBtn" ws-send hx-trigger="click" hx-vals='{"msg": "hello"}'>Send</button>
+    <div type="hidden" id="sendBtn" ws-send hx-trigger="click" hx-vals='{"msg": "hello"}'></div>
 
 
 
@@ -164,12 +164,26 @@
     var dropZoneId = ev.target.id;
 
     console.log("Drop Zone ID:", dropZoneId);
+    // const querID = "cardContent2.Todo"
+    const querID = "sendBtn"
+    console.log(querID)
+    const element = document.querySelector('#' + querID);
+    console.log(element)
+    element.setAttribute('hx-vals', `{"taskID": "${taskID}"}`);
+    console.log(element)
+    htmx.trigger(`#sendBtn`, 'click');
+    // const el = document.getElementById(dropZoneId);
+    // console.log(el)
+    // const btn = document.createElement('button');
 
-    const el = document.getElementById(dropZoneId);
-    console.log(el)
+    // Set the ID
+    // btn.id = 'sendBtn';
+    //
+    // // Set htmx attributes
+    // btn.setAttribute('ws-send', '');
+    // btn.setAttribute('hx-trigger', 'click');
+    // btn.setAttribute('hx-vals', '{"msg": "hello"}');
 
-
-    htmx.trigger('#sendBtn', 'click');
     // 2. Access the htmx extension instance
     // const extensionInstance = el.__htmx;
     //
