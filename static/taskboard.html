@@ -32,7 +32,6 @@
 
   <body hx-ext="ws" ws-connect="/projects/{{ .ID }}/ws">
 
-
     <div class="board-wrapper">
       <div class="task-grid" id="rows">
         <div id="1.1" class="header-cell">Todo</div>
@@ -131,12 +130,37 @@
         </div>
       </div>
     </div>
+    <!-- HTML -->
+    <div type="hidden" id="sendBtn" ws-send hx-trigger="click" hx-vals='{"msg": "hello"}'></div>
 
-
-    <!-- <div id="pageend"> -->
-    <!--   <a hx-get="/projects/{{ .ID }}/tasks/create" hx-target="#pageend" class="btn btn-secondary">Create</a> -->
-    <!-- </div> -->
 </div>
+<script>
+
+  function allowDrop(ev) {
+    ev.preventDefault();
+  }
+
+  function drop(ev) {
+    ev.preventDefault();
+    var taskID = ev.dataTransfer.getData("taskId");
+    var dropZoneId = ev.target.id;
+
+
+    const arr = dropZoneId.split(".")
+
+    var targetStatus = arr[1]
+    if (targetStatus === "InProgress") {
+      targetStatus = "In Progress"
+    }
+
+
+    const querID = "sendBtn"
+    const element = document.querySelector('#' + querID);
+    element.setAttribute('hx-vals', `{"taskID": "${taskID}", "event-type": "edit-event", "status": "${targetStatus}"}`);
+    htmx.trigger(`#sendBtn`, 'click');
+  }
+
+</script>
 </body>
 
 </html>

@@ -50,6 +50,7 @@
     }
 
     .row-group {
+      dragable: true;
       display: contents;
     }
 
