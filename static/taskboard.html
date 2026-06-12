@@ -131,6 +131,9 @@
         </div>
       </div>
     </div>
+    <!-- HTML -->
+    <button id="sendBtn" ws-send hx-trigger="click" hx-vals='{"msg": "hello"}'>Send</button>
+
 
 
     <!-- <div id="pageend"> -->
@@ -138,6 +141,8 @@
     <!-- </div> -->
 </div>
 <script>
+
+  // Trigger the click event which htmx intercepts to send via WS
   // function drag(ev) {
   //   console.log("drag ")
   //   console.log(ev)
@@ -154,33 +159,28 @@
     // console.log(" Drop")
     // console.log(ev)
     ev.preventDefault();
-    var data = ev.dataTransfer.getData("taskId");
-    console.log("taskID: ", data)
+    var taskID = ev.dataTransfer.getData("taskId");
+    console.log("taskID: ", taskID)
     var dropZoneId = ev.target.id;
 
     console.log("Drop Zone ID:", dropZoneId);
-    //send request to backend.
-    //with target position
-    //     const element = document.getElementById('cardContent');
-    // console.log(element)
-    const sendElement = document.createElement('div');
 
-    // 2. Add the custom boolean-style attribute 'ws-send'
-    // Setting the value to an empty string or the attribute name is standard for boolean-like custom attrs
-    sendElement.setAttribute('ws-send', '');
+    const el = document.getElementById(dropZoneId);
+    console.log(el)
 
-    // 3. Set the hx-trigger attribute
-    sendElement.setAttribute('hx-trigger', 'click');
-    // sendElement.classList.add('ws-send');
-    // const sendElement = '<div ws-send  hx-trigger="click" ></div>'
-    console.log(sendElement)
-    // const elt = document.body;
-    htmx.trigger(sendElement, 'ws-send', {
-      // You can pass custom data here if you modify the event listener below
-      customData: data
-    });
-    console.log('sended')
 
+    htmx.trigger('#sendBtn', 'click');
+    // 2. Access the htmx extension instance
+    // const extensionInstance = el.__htmx;
+    //
+    // // 3. Access the WebSocket extension
+    // const wsExtension = extensionInstance.ext.ws;
+    //
+    // // 4. Get the socket wrapper for the specific connection
+    // // Note: The key might vary based on the URL or configuration; 
+    // // often it is the first item in the sockets object or accessed via a specific method.
+    // // In recent versions, you may access it via:
+    // const socketWrapper = wsExtension.sockets[0];
   }
 
 </script>
