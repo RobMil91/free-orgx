@@ -55,6 +55,7 @@ func main() {
 		adapters.TaskRepo,
 
 		adapters.EventRepo,
+		adapters.EventsTranslator,
 		map[string]func(w http.ResponseWriter, r *http.Request){},
 	)
 

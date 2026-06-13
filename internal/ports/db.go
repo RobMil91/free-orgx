@@ -87,8 +87,6 @@ type TasksRepo interface {
 type EventStore interface {
 	NewEvent(ctx context.Context, project_id string, t models.TaskEventRequest) (*models.TaskEvent, error)
 	GetEvents(ctx context.Context, project_id string) ([]models.TaskEvent, error)
-	//get the current state event,
-	// GetEvent(ctx context.Context, event_id string) (*Task, error)
 }
 
 var DatabaseError = errors.New("database adapter failed to execute action")

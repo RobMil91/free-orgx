@@ -6,14 +6,16 @@ import (
 	"github.com/RobMil91/free-orgx/config"
 	"github.com/RobMil91/free-orgx/internal/adapters/database"
 	"github.com/RobMil91/free-orgx/internal/adapters/mocks"
+	"github.com/RobMil91/free-orgx/internal/core/tasks"
 	"github.com/RobMil91/free-orgx/internal/ports"
 )
 
 type Adapters struct {
-	UserRep    ports.UserRepo
-	ProjectRep ports.ProjectRepo
-	TaskRepo   ports.TasksRepo
-	EventRepo  ports.EventStore
+	UserRep          ports.UserRepo
+	ProjectRep       ports.ProjectRepo
+	TaskRepo         ports.TasksRepo
+	EventRepo        ports.EventStore
+	EventsTranslator ports.EventTranslator
 }
 
 func Setup(cfg config.Config) (*Adapters, error) {
@@ -21,8 +23,9 @@ func Setup(cfg config.Config) (*Adapters, error) {
 		users    ports.UserRepo
 		projects ports.ProjectRepo
 
-		taskRepo  ports.TasksRepo
-		eventRepo ports.EventStore
+		taskRepo     ports.TasksRepo
+		eventRepo    ports.EventStore
+		evTranslator ports.EventTranslator
 	)
 
 	if cfg.RAMDB {
@@ -51,13 +54,19 @@ func Setup(cfg config.Config) (*Adapters, error) {
 		taskRepo = db
 		eventRepo = db
 
+		evTranslator = tasks.NewTaskBoard(db, "./static/")
+		// evTranslator = tasks.NewTaskBoard(db, "../../static/")
+
 		slog.Info("started sqlite db (first login becomes admin)")
 	}
 
+	//new translator
+
 	return &Adapters{
-		UserRep:    users,
-		ProjectRep: projects,
-		TaskRepo:   taskRepo,
-		EventRepo:  eventRepo,
+		UserRep:          users,
+		ProjectRep:       projects,
+		TaskRepo:         taskRepo,
+		EventRepo:        eventRepo,
+		EventsTranslator: evTranslator,
 	}, nil
 }
