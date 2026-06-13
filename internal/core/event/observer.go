@@ -76,26 +76,40 @@ type TaskObserver struct {
 	Logger           *slog.Logger
 	ProjectID        string
 	EventTranslators ports.EventTranslator
+
+	Sender ports.Sender
 }
 
 func NewTaskObserver(
 	l *slog.Logger,
 	ev ports.EventTranslator,
 	pID string,
+
+	s ports.Sender,
+
 ) (*TaskObserver, error) {
 
 	newObserver := TaskObserver{
 		Logger:           l,
 		ProjectID:        pID,
 		EventTranslators: ev,
+
+		Sender: s,
 	}
 
 	ctx := context.Background()
 
-	err := newObserver.EventTranslators.GetPreviousEvents(ctx, pID)
+	messages, err := newObserver.EventTranslators.GetPreviousEvents(ctx, pID)
 	if err != nil {
 		newObserver.Logger.ErrorContext(ctx, err.Error())
 		return nil, err
+	}
+
+	for _, m := range messages {
+		err := newObserver.update(ctx, m)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &newObserver, nil
@@ -111,14 +125,24 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 	default:
 		return fmt.Errorf("unkown event type for observer to send %s", t.TaskEventRequest.Type)
 	case "create-row":
-		err := o.EventTranslators.CreateEvent(ctx, t)
+		msg, err := o.EventTranslators.CreateRowEvent(ctx, t)
+		if err != nil {
+			return err
+		}
+
+		err = o.Sender.Send(ctx, msg)
 		if err != nil {
 			return err
 		}
 
 	case "create":
 
-		err := o.EventTranslators.CreateEventAndRow(ctx, t)
+		msg, err := o.EventTranslators.CreateEventAndRow(ctx, t)
+		if err != nil {
+			return err
+		}
+
+		err = o.Sender.Send(ctx, msg)
 		if err != nil {
 			return err
 		}
@@ -132,9 +156,16 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 	case ports.EditEvent:
 		o.Logger.DebugContext(ctx, fmt.Sprintf("got edit event [ %+v ]", t))
 
-		err := o.EventTranslators.UpdateEvent(ctx, t)
+		messages, err := o.EventTranslators.UpdateEvent(ctx, t)
 		if err != nil {
 			return err
+		}
+
+		for _, m := range messages {
+			err := o.Sender.Send(ctx, m)
+			if err != nil {
+				return err
+			}
 		}
 
 	}

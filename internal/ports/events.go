@@ -7,10 +7,10 @@ import (
 )
 
 type EventTranslator interface {
-	CreateEvent(ctx context.Context, e models.TaskEvent) error
-	CreateEventAndRow(ctx context.Context, e models.TaskEvent) error
+	CreateRowEvent(ctx context.Context, e models.TaskEvent) ([]byte, error)
+	CreateEventAndRow(ctx context.Context, e models.TaskEvent) ([]byte, error)
 	// GetEvents responds the messages needed to send, on empty board
-	GetPreviousEvents(ctx context.Context, pID string) error
+	GetPreviousEvents(ctx context.Context, pID string) ([]models.TaskEvent, error)
 
-	UpdateEvent(ctx context.Context, e models.TaskEvent) error
+	UpdateEvent(ctx context.Context, e models.TaskEvent) ([][]byte, error)
 }

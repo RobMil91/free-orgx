@@ -16,34 +16,29 @@ var _ ports.EventTranslator = (*TaskBoard)(nil)
 type TaskBoard struct {
 	Events ports.EventStore
 
-	Client ports.Sender
-
 	TemplatePath string
 }
 
-func NewTaskBoard(e ports.EventStore, c ports.Sender, p string) *TaskBoard {
+func NewTaskBoard(e ports.EventStore, p string) *TaskBoard {
 	return &TaskBoard{
 		TemplatePath: p,
 		Events:       e,
-		Client:       c,
 	}
 }
 
 // CreateEventAndRow implements [ports.EventTranslator].
-func (t *TaskBoard) CreateEventAndRow(ctx context.Context, e models.TaskEvent) error {
-	msg, err := t.rowAndCard(ctx, e)
-	if err != nil {
-		return err
-	}
-
-	return t.Client.Send(ctx, msg)
+func (t *TaskBoard) CreateEventAndRow(ctx context.Context, e models.TaskEvent) ([]byte, error) {
+	return t.rowAndCard(ctx, e)
 }
 
 // UpdateEvent implements [ports.EventTranslator].
-func (t *TaskBoard) UpdateEvent(ctx context.Context, e models.TaskEvent) error {
+func (t *TaskBoard) UpdateEvent(ctx context.Context, e models.TaskEvent) ([][]byte, error) {
+	var (
+		messages [][]byte
+	)
 	oldState, newestEvent, err := t.getLastTaskStatus(ctx, e)
 	if err != nil {
-		return fmt.Errorf("could not get state and newest Event %w", err)
+		return nil, fmt.Errorf("could not get state and newest Event %w", err)
 	}
 
 	updated, updatedTask := models.Diff(oldState.NewTask, newestEvent.NewTask)
@@ -53,7 +48,7 @@ func (t *TaskBoard) UpdateEvent(ctx context.Context, e models.TaskEvent) error {
 		//determine position on board
 		pos, err := t.rowPosition(ctx, e.TaskID, e.ProjectID)
 		if err != nil {
-			return fmt.Errorf("failed to get position %w", err)
+			return nil, fmt.Errorf("failed to get position %w", err)
 		}
 
 		posState := oldState.Status
@@ -63,10 +58,12 @@ func (t *TaskBoard) UpdateEvent(ctx context.Context, e models.TaskEvent) error {
 
 		oldPosition := fmt.Sprintf("%s.%s", *pos, posState)
 
-		err = t.deleteDiv(ctx, oldPosition)
+		msg1, err := t.deleteDiv(ctx, oldPosition)
 		if err != nil {
-			return fmt.Errorf("failed to delete div %w", err)
+			return nil, fmt.Errorf("failed to delete div %w", err)
 		}
+
+		messages = append(messages, msg1)
 
 		var rowPosition string = e.Status
 		if e.NewTask.Status == "In Progress" {
@@ -75,23 +72,28 @@ func (t *TaskBoard) UpdateEvent(ctx context.Context, e models.TaskEvent) error {
 
 		newPosition := fmt.Sprintf("%s.%s", *pos, rowPosition)
 
-		err = t.updateRowCard(ctx, models.CardInput{
+		msg2, err := t.updateRowCard(ctx, models.CardInput{
 			CardPosition: newPosition,
 			Title:        updatedTask.Title,
 			ID:           oldState.TaskID,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to update row card %w", err)
+			return nil, fmt.Errorf("failed to update row card %w", err)
 		}
+
+		messages = append(messages, msg2)
 
 	}
 
-	return nil
+	return messages, nil
 
 }
 
 // GetPreviousEvents implements [ports.EventTranslator].
-func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) error {
+func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) ([]models.TaskEvent, error) {
+	var (
+		events []models.TaskEvent
+	)
 	//can be refactored into one html send.
 
 	//calculate only the events that need to be send
@@ -100,35 +102,30 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) error {
 
 	previousEvents, err := t.Events.GetEvents(ctx, pID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, e := range previousEvents {
 		if e.Type == "create" {
-
-			err := t.CreateEvent(ctx, models.TaskEvent{
+			newEvent := models.TaskEvent{
 				TaskEventRequest: models.TaskEventRequest{
 					TaskID:    e.TaskID,
 					Type:      "create-row",
 					ProjectID: e.ProjectID,
 				},
-			})
-			if err != nil {
-				return err
 			}
+
+			events = append(events, newEvent)
 
 			state, event, err := t.getLastTaskStatus(context.Background(), e)
 			if err != nil {
-				return fmt.Errorf("could not scrap history to state %w", err)
+				return nil, fmt.Errorf("could not scrap history to state %w", err)
 			}
 
 			if event.Type == "create" && state.Status == "Todo" {
 				event.Type = ports.EditEvent
 			}
 
-			err = t.UpdateEvent(ctx, *event)
-			if err != nil {
-				return err
-			}
+			events = append(events, *event)
 
 		}
 	}
@@ -141,19 +138,12 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) error {
 	// 	}
 	// }
 
-	return nil
+	return events, nil
 }
 
-// CreateEvent implements [ports.EventTranslator].
-func (t *TaskBoard) CreateEvent(ctx context.Context, e models.TaskEvent) error {
-	msg, err := t.rowHTML(ctx, e)
-	if err != nil {
-		return err
-	}
-
-	t.Client.Send(ctx, msg)
-
-	return nil
+// CreateRowEvent implements [ports.EventTranslator].
+func (t *TaskBoard) CreateRowEvent(ctx context.Context, e models.TaskEvent) ([]byte, error) {
+	return t.rowHTML(ctx, e)
 }
 
 func (t *TaskBoard) rowHTML(ctx context.Context, e models.TaskEvent) ([]byte, error) {
@@ -250,7 +240,7 @@ func (t *TaskBoard) getLastTaskStatus(ctx context.Context, e models.TaskEvent) (
 	return oldState, &newEvent, nil
 }
 
-func (t *TaskBoard) updateRowCard(ctx context.Context, i models.CardInput) error {
+func (t *TaskBoard) updateRowCard(ctx context.Context, i models.CardInput) ([]byte, error) {
 	tmpl := template.Must(template.ParseFiles(t.TemplatePath + "card.html"))
 
 	var buffer2 bytes.Buffer
@@ -262,22 +252,15 @@ func (t *TaskBoard) updateRowCard(ctx context.Context, i models.CardInput) error
 	})
 
 	if err != nil {
-		return fmt.Errorf("could not append data to templ [%w]", err)
+		return nil, fmt.Errorf("could not append data to templ [%w]", err)
 	}
 
 	msg2 := buffer2.Bytes()
 
-	err = t.Client.Send(ctx, msg2)
-	if err != nil {
-		return err
-	}
-
-	// err = o.Conn.WriteMessage(websocket.TextMessage, msg2)
-
-	return nil
+	return msg2, nil
 }
 
-func (t *TaskBoard) deleteDiv(ctx context.Context, boardPosition string) error {
+func (t *TaskBoard) deleteDiv(ctx context.Context, boardPosition string) ([]byte, error) {
 	tmpl := template.Must(template.ParseFiles(t.TemplatePath + "task_delete.html"))
 
 	var buffer bytes.Buffer
@@ -287,17 +270,10 @@ func (t *TaskBoard) deleteDiv(ctx context.Context, boardPosition string) error {
 	})
 
 	if err != nil {
-		return fmt.Errorf("could not append data to templ [%w]", err)
+		return nil, fmt.Errorf("could not append data to templ [%w]", err)
 	}
 
-	msg := buffer.Bytes()
-
-	err = t.Client.Send(ctx, msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return buffer.Bytes(), nil
 }
 
 func (t *TaskBoard) rowAndCard(ctx context.Context, e models.TaskEvent) ([]byte, error) {

@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/RobMil91/free-orgx/internal/adapters/clients"
 	"github.com/RobMil91/free-orgx/internal/core/event"
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
@@ -51,7 +52,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	subjectObserver, err := event.NewTaskObserver(p.Logger, p.EventTranslator, projectID)
+	subjectObserver, err := event.NewTaskObserver(p.Logger, p.EventTranslator, projectID, clients.NewWS(conn))
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

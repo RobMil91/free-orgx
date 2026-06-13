@@ -10,12 +10,18 @@ import (
 var _ ports.Sender = (*WS)(nil)
 
 type WS struct {
-	Conn *websocket.Conn
+	conn *websocket.Conn
+}
+
+func NewWS(c *websocket.Conn) *WS {
+	return &WS{
+		conn: c,
+	}
 }
 
 // Send implements [ports.Sender].
 func (w *WS) Send(ctx context.Context, msg []byte) error {
-	err := w.Conn.WriteMessage(websocket.TextMessage, msg)
+	err := w.conn.WriteMessage(websocket.TextMessage, msg)
 	if err != nil {
 		return err
 	}

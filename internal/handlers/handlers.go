@@ -30,11 +30,7 @@ type Project struct {
 
 	EventTranslator ports.EventTranslator
 
-	// InChannel  chan (ports.TaskEventRequest)
-	// OutChannel chan (ports.Task)
-
 	TasksSubjects map[string]event.TaskSubject //project_id -> subject
-	// TasksObservers map[string]event.TaskObserver //project_id -> observer?
 
 	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
 }
