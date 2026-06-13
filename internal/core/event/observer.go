@@ -7,7 +7,6 @@ import (
 
 	"github.com/RobMil91/free-orgx/internal/models"
 	"github.com/RobMil91/free-orgx/internal/ports"
-	"github.com/gorilla/websocket"
 )
 
 type observer interface {
@@ -79,16 +78,16 @@ type TaskObserver struct {
 	EventTranslators ports.EventTranslator
 }
 
-func NewTaskObserver(id string,
-	conn *websocket.Conn,
+func NewTaskObserver(
 	l *slog.Logger,
+	ev ports.EventTranslator,
 	pID string,
 ) (*TaskObserver, error) {
 
 	newObserver := TaskObserver{
-		ID:        id,
-		Logger:    l,
-		ProjectID: pID,
+		Logger:           l,
+		ProjectID:        pID,
+		EventTranslators: ev,
 	}
 
 	ctx := context.Background()
@@ -112,13 +111,7 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 	default:
 		return fmt.Errorf("unkown event type for observer to send %s", t.TaskEventRequest.Type)
 	case "create-row":
-		msg, err := o.EventTranslators.CreateEvent(ctx, t)
-		if err != nil {
-			return err
-		}
-
-		o.Logger.DebugContext(ctx, fmt.Sprintf("sending message update [ %s ]", string(msg)))
-		err = o.Conn.WriteMessage(websocket.TextMessage, msg)
+		err := o.EventTranslators.CreateEvent(ctx, t)
 		if err != nil {
 			return err
 		}
@@ -139,13 +132,7 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 	case ports.EditEvent:
 		o.Logger.DebugContext(ctx, fmt.Sprintf("got edit event [ %+v ]", t))
 
-		msg, err := o.EventTranslators.UpdateEvent(ctx, t)
-		if err != nil {
-			return err
-		}
-
-		o.Logger.DebugContext(ctx, fmt.Sprintf("sending message update [ %s ]", string(msg)))
-		err = o.Conn.WriteMessage(websocket.TextMessage, msg)
+		err := o.EventTranslators.UpdateEvent(ctx, t)
 		if err != nil {
 			return err
 		}

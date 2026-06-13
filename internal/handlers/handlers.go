@@ -28,6 +28,8 @@ type Project struct {
 
 	EventsRepo ports.EventStore
 
+	EventTranslator ports.EventTranslator
+
 	// InChannel  chan (ports.TaskEventRequest)
 	// OutChannel chan (ports.Task)
 
@@ -43,6 +45,7 @@ func NewProjectHandler(path string,
 	p ports.ProjectRepo,
 	t ports.TasksRepo,
 	e ports.EventStore,
+	ev ports.EventTranslator,
 	endpoints map[string]func(w http.ResponseWriter, r *http.Request)) (*Project, error) {
 
 	return &Project{
@@ -52,7 +55,8 @@ func NewProjectHandler(path string,
 		ProjectRepo:  p,
 		TasksRepo:    t,
 
-		EventsRepo: e,
+		EventTranslator: ev,
+		EventsRepo:      e,
 
 		TasksSubjects: map[string]event.TaskSubject{},
 

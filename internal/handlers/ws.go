@@ -3,8 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -46,14 +44,14 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	p.Logger.DebugContext(r.Context(), "successful websocket connection")
 
-	wsID, err := createRandStr(15)
-	if err != nil {
-		p.Logger.ErrorContext(r.Context(), err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// wsID, err := createRandStr(15)
+	// if err != nil {
+	// 	p.Logger.ErrorContext(r.Context(), err.Error())
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
-	subjectObserver, err := event.NewTaskObserver(*wsID, conn, p.Logger, p.TemplatePath, p.EventsRepo, projectID)
+	subjectObserver, err := event.NewTaskObserver(p.Logger, p.EventTranslator, projectID)
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -316,12 +314,12 @@ func parseTaskID(b []byte) (*string, error) {
 	return &event.ID, nil
 }
 
-func createRandStr(length int) (*string, error) {
-	b := make([]byte, length)
-	_, err := rand.Read(b)
-	if err != nil {
-		return nil, err
-	}
-	randStr := base64.URLEncoding.EncodeToString(b)
-	return &randStr, nil
-}
+// func createRandStr(length int) (*string, error) {
+// 	b := make([]byte, length)
+// 	_, err := rand.Read(b)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	randStr := base64.URLEncoding.EncodeToString(b)
+// 	return &randStr, nil
+// }

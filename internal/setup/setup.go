@@ -10,10 +10,11 @@ import (
 )
 
 type Adapters struct {
-	UserRep    ports.UserRepo
-	ProjectRep ports.ProjectRepo
-	TaskRepo   ports.TasksRepo
-	EventRepo  ports.EventStore
+	UserRep          ports.UserRepo
+	ProjectRep       ports.ProjectRepo
+	TaskRepo         ports.TasksRepo
+	EventRepo        ports.EventStore
+	EventsTranslator ports.EventTranslator
 }
 
 func Setup(cfg config.Config) (*Adapters, error) {
@@ -53,6 +54,10 @@ func Setup(cfg config.Config) (*Adapters, error) {
 
 		slog.Info("started sqlite db (first login becomes admin)")
 	}
+
+	//new sender
+
+	//new translator
 
 	return &Adapters{
 		UserRep:    users,

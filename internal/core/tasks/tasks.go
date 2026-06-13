@@ -21,9 +21,22 @@ type TaskBoard struct {
 	TemplatePath string
 }
 
+func NewTaskBoard(e ports.EventStore, c ports.Sender, p string) *TaskBoard {
+	return &TaskBoard{
+		TemplatePath: p,
+		Events:       e,
+		Client:       c,
+	}
+}
+
 // CreateEventAndRow implements [ports.EventTranslator].
 func (t *TaskBoard) CreateEventAndRow(ctx context.Context, e models.TaskEvent) error {
-	panic("unimplemented")
+	msg, err := t.rowAndCard(ctx, e)
+	if err != nil {
+		return err
+	}
+
+	return t.Client.Send(ctx, msg)
 }
 
 // UpdateEvent implements [ports.EventTranslator].
@@ -79,9 +92,6 @@ func (t *TaskBoard) UpdateEvent(ctx context.Context, e models.TaskEvent) error {
 
 // GetPreviousEvents implements [ports.EventTranslator].
 func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) error {
-	var (
-		eventsToSend []models.TaskEvent
-	)
 	//can be refactored into one html send.
 
 	//calculate only the events that need to be send
@@ -95,13 +105,16 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) error {
 	for _, e := range previousEvents {
 		if e.Type == "create" {
 
-			eventsToSend = append(eventsToSend, models.TaskEvent{
+			err := t.CreateEvent(ctx, models.TaskEvent{
 				TaskEventRequest: models.TaskEventRequest{
 					TaskID:    e.TaskID,
 					Type:      "create-row",
 					ProjectID: e.ProjectID,
 				},
 			})
+			if err != nil {
+				return err
+			}
 
 			state, event, err := t.getLastTaskStatus(context.Background(), e)
 			if err != nil {
@@ -112,14 +125,12 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) error {
 				event.Type = ports.EditEvent
 			}
 
-			eventsToSend = append(eventsToSend, *event)
+			err = t.UpdateEvent(ctx, *event)
+			if err != nil {
+				return err
+			}
 
 		}
-	}
-
-	for _, e := range eventsToSend {
-
-		t.Client.Send(ctx, e)
 	}
 
 	//TODO: is this correct in here?
@@ -294,7 +305,7 @@ func (t *TaskBoard) rowAndCard(ctx context.Context, e models.TaskEvent) ([]byte,
 
 	var buffer bytes.Buffer
 
-	rowNumber, err := t.rowPosition(context.TODO(), e.TaskID, e.ProjectID)
+	rowNumber, err := t.rowPosition(ctx, e.TaskID, e.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("creating event row failed %w", err)
 	}
