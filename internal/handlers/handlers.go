@@ -270,22 +270,20 @@ func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type TaskBoardValues struct {
-	ID    string
-	Tasks []models.Task
-}
-
 func LoginSubmit(
 	l *slog.Logger,
 	db ports.UserRepo,
 ) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("login submit request")
-		l.Debug(r.FormValue("user"))
-
+		tmpl := template.Must(template.ParseFiles(htmxPath + "loginSuccessCard.html"))
 		result, err := db.GetUserToken(r.Context(), r.FormValue("user"), r.FormValue("password"))
 		if err != nil {
-			w.Write([]byte("Login failed: invalid username or password"))
+
+			tmpl.Execute(w, struct {
+				Result string
+			}{
+				Result: "failed",
+			})
 			return
 		}
 
@@ -298,11 +296,15 @@ func LoginSubmit(
 
 		if result.IsNewUser {
 			l.Info(fmt.Sprintf("first admin registered: %s", result.User.Name))
-			// w.Write([]byte(fmt.Sprintf("Welcome! You are the first admin (%s).", result.User.Name)))
 			return
 		}
 
-		w.Write([]byte(result.Cookie.Value))
+		tmpl.Execute(w, struct {
+			Result string
+		}{
+			Result: "Success",
+		})
+
 	}
 }
 

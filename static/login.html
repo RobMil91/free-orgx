@@ -10,9 +10,9 @@
 </head>
 
 <body>
-  <div class="card">
+  <div id="loginCard" class="card">
     <h1>Sign In</h1>
-    <form hx-post="/submit" hx-trigger="submit" hx-target="#result" hx-swap="innerHTML">
+    <form hx-post="/submit" hx-trigger="submit" hx-target="#loginCard" hx-swap="outerHTML">
       <div class="form-group">
         <label>Username</label>
         <input type="text" name="user" required>
