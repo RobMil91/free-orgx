@@ -275,9 +275,15 @@ func LoginSubmit(
 	db ports.UserRepo,
 ) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		tmpl := template.Must(template.ParseFiles(htmxPath + "loginSuccessCard.html"))
 		result, err := db.GetUserToken(r.Context(), r.FormValue("user"), r.FormValue("password"))
 		if err != nil {
-			w.Write([]byte("Login failed: invalid username or password"))
+
+			tmpl.Execute(w, struct {
+				Result string
+			}{
+				Result: "failed",
+			})
 			return
 		}
 
@@ -293,8 +299,11 @@ func LoginSubmit(
 			return
 		}
 
-		tmpl := template.Must(template.ParseFiles(htmxPath + "loginSuccessCard.html"))
-		tmpl.Execute(w, nil)
+		tmpl.Execute(w, struct {
+			Result string
+		}{
+			Result: "Success",
+		})
 
 	}
 }
