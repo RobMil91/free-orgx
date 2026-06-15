@@ -1,0 +1,15 @@
+<div id="usersDiv" class="card">
+  <h2>Existing Users</h2>
+  {{if .Users}}
+  <ul class="user-list">
+    {{range .Users}}
+    <li class="user-item">
+      <span class="user-name">{{.Name}}</span>
+      <span class="user-role {{if eq .Role " admin"}}admin{{end}}">{{.Role}}</span>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <div class="empty-state">No users found.</div>
+  {{end}}
+</div>

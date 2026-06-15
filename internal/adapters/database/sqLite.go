@@ -83,7 +83,27 @@ func (s *SQLiteAdapter) GetEvent(ctx context.Context, event_id string) (*models.
 
 // GetAllProjects implements [ports.ProjectRepo].
 func (s *SQLiteAdapter) GetAllProjects(ctx context.Context) ([]models.Project, error) {
-	panic("unimplemented")
+	rows, err := s.Conn.Query(`SELECT id, name, owner, created_at FROM projects`)
+	if err != nil {
+		slog.Error(fmt.Sprintf("could not query projects: %v", err))
+		return nil, ports.DatabaseError
+	}
+	defer rows.Close()
+
+	var projects []models.Project
+	for rows.Next() {
+		var p models.Project
+		if err := rows.Scan(&p.ID, &p.Name, &p.Owner, &p.Created); err != nil {
+			return nil, err
+		}
+		projects = append(projects, p)
+	}
+
+	if projects == nil {
+		projects = []models.Project{}
+	}
+
+	return projects, nil
 }
 
 // GetEvents implements [ports.EventStore].

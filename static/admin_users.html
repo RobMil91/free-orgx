@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
   <script src="/htmx.min.js"></script>
   <link rel="stylesheet" type="text/css" href="styles_admin_users.css">
 </head>
+
 <body>
   <header>
     <div class="logo">Free Orgx</div>
@@ -15,7 +17,7 @@
   <main>
     <div class="card">
       <h1>Create New User</h1>
-      <form hx-post="/admin/user/create" hx-trigger="submit" hx-target="#result" hx-swap="innerHTML">
+      <form hx-post="/admin/user/create" hx-trigger="submit" hx-target="#usersDiv" hx-swap="outerHTML">
         <div class="form-row">
           <div class="form-group">
             <label>Username</label>
@@ -30,14 +32,14 @@
       </form>
       <div id="result"></div>
     </div>
-    <div class="card">
+    <div id="usersDiv" class="card">
       <h2>Existing Users</h2>
       {{if .Users}}
       <ul class="user-list">
         {{range .Users}}
         <li class="user-item">
           <span class="user-name">{{.Name}}</span>
-          <span class="user-role {{if eq .Role "admin"}}admin{{end}}">{{.Role}}</span>
+          <span class="user-role {{if eq .Role " admin"}}admin{{end}}">{{.Role}}</span>
         </li>
         {{end}}
       </ul>
@@ -47,4 +49,5 @@
     </div>
   </main>
 </body>
+
 </html>

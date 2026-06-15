@@ -82,7 +82,7 @@ func main() {
 	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
 	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
-	mux.HandleFunc("/users/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
+	mux.HandleFunc("/admin/user/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
 
 	mux.Handle("/", http.FileServer(http.Dir("./static")))
 

@@ -81,7 +81,7 @@ func (p *Project) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projects, err := p.ProjectRepo.GetProjectsByOwner(r.Context(), user.Name)
+	projects, err := p.ProjectRepo.GetAllProjects(r.Context())
 	if err != nil {
 		p.Logger.Error("failed to get projects", "error", err)
 		return
@@ -432,6 +432,20 @@ func AdminCreateUserHandler(l *slog.Logger, db ports.UserRepo) func(w http.Respo
 		}
 
 		l.Info(fmt.Sprintf("admin %s created user %s", user.Name, username))
-		w.Write([]byte(fmt.Sprintf("User '%s' created successfully", username)))
+
+		users, err := db.GetAll(r.Context())
+
+		if err != nil {
+			l.Error("failed to create user list", "error", err)
+			return
+		}
+
+		tmpl := template.Must(template.ParseFiles(htmxPath + "userList.html"))
+		tmpl.Execute(w, struct {
+			Users []ports.User
+		}{
+			Users: users,
+		})
+
 	}
 }
