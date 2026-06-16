@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -222,12 +223,34 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not retrieve snapshot for id: "+id, http.StatusInternalServerError)
 		return
 	}
+	users, err := p.UserRepo.GetAll(r.Context())
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), fmt.Sprintf("could not get users %s", err.Error()))
+		http.Error(w, fmt.Sprintf("could not get users %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	var userHTML []struct {
+		ShortName string
+		Name      string
+	}
+
+	for _, u := range users {
+		userHTML = append(userHTML, struct {
+			ShortName string
+			Name      string
+		}{
+			Name:      u.Name,
+			ShortName: u.Name[0:1],
+		})
+	}
 
 	p.Logger.DebugContext(r.Context(), fmt.Sprintf("loaded tasks %+v", tasks))
 
 	data := map[string]any{
-		"ID":   id,
-		"Name": project.Name,
+		"ID":    id,
+		"Name":  project.Name,
+		"Users": userHTML,
 	}
 	if len(tasks) == 0 {
 		data["Tasks"] = nil
@@ -242,6 +265,30 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+type UsersHTML struct {
+	Name      string
+	ShortName string
+}
+
+func (p *Project) UsersHTML(ctx context.Context) ([]UsersHTML, error) {
+	users, err := p.UserRepo.GetAll(ctx)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, fmt.Sprintf("could not get users %s", err.Error()))
+		return nil, err
+	}
+
+	var userHTML []UsersHTML
+
+	for _, u := range users {
+		userHTML = append(userHTML, UsersHTML{
+			Name:      u.Name,
+			ShortName: u.Name[0:1],
+		})
+	}
+
+	return userHTML, nil
 }
 
 func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {

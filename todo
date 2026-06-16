@@ -1,0 +1,1 @@
+fix that drag and drop removes assingies -> refactor the whole edit event, it should not update anything if an edit event, has no assignies set
