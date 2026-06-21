@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"slices"
 
 	"github.com/RobMil91/free-orgx/internal/adapters/clients"
 	"github.com/RobMil91/free-orgx/internal/core/event"
@@ -45,14 +46,14 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	p.Logger.DebugContext(r.Context(), "successful websocket connection")
 
-	// wsID, err := createRandStr(15)
-	// if err != nil {
-	// 	p.Logger.ErrorContext(r.Context(), err.Error())
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+	wsID, err := models.CreateRandStr(15)
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	subjectObserver, err := event.NewTaskObserver(p.Logger, p.EventTranslator, projectID, clients.NewWS(conn))
+	subjectObserver, err := event.NewTaskObserver(p.Logger, p.EventTranslator, projectID, clients.NewWS(conn), *wsID)
 	if err != nil {
 		p.Logger.ErrorContext(r.Context(), err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -173,55 +174,19 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 			// it just direct back command, sort them later, it is currently not added to db
 		case "edit":
+
 			taskCardID, err := parseTaskID(msg)
 			if err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
 				continue
 			}
 
-			p.Logger.DebugContext(r.Context(), fmt.Sprintf("edit event card request %s", *taskCardID))
-
-			events, err := p.EventsRepo.GetEvents(r.Context(), projectID)
-			if err != nil {
-				p.Logger.ErrorContext(r.Context(), err.Error())
-				continue
-			}
-
-			p.Logger.DebugContext(r.Context(), fmt.Sprintf("projectEvents %+v from %s", events, projectID))
-
-			events = models.FilterTaskEvents(events, *taskCardID)
-
-			taskState, err := models.EventsToState(events)
-			if err != nil {
-				p.Logger.ErrorContext(r.Context(), err.Error())
-				continue
-			}
-
-			tmpl := template.Must(template.ParseFiles(p.TemplatePath + "edit_card.html"))
-
-			var buffer bytes.Buffer
-
-			err = tmpl.Execute(&buffer, map[string]string{
-				"Title":       taskState.Title,
-				"Description": taskState.Description,
-				"TaskID":      taskState.TaskID,
-			})
-
-			if err != nil {
-				p.Logger.ErrorContext(r.Context(), err.Error())
-				continue
-			}
-
-			err = conn.WriteMessage(websocket.TextMessage, buffer.Bytes())
-			if err != nil {
+			if err := p.handleEdit(r.Context(), projectID, *taskCardID, conn); err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
 				continue
 			}
 
 		case "edit-event":
-			// p.Logger.WarnContext(r.Context(), fmt.Sprintf("unimplemented event type %s", eTyp.T))
-			// continue
-
 			event, err := parseEdit(msg)
 			if err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
@@ -262,10 +227,90 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				continue
 			}
+
+			if err := p.handleEdit(r.Context(), projectID, newEvent.TaskID, conn); err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				continue
+			}
+
 			continue
 
 		}
 	}
+}
+
+func (p *Project) handleEdit(ctx context.Context, projectID, taskCardID string, c *websocket.Conn) error {
+	p.Logger.DebugContext(ctx, fmt.Sprintf("edit event card request %s", taskCardID))
+
+	events, err := p.EventsRepo.GetEvents(ctx, projectID)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, err.Error())
+		return err
+	}
+	p.Logger.DebugContext(ctx, fmt.Sprintf("events %+v", events))
+
+	events = models.FilterTaskEvents(events, taskCardID)
+
+	taskState, err := models.EventsToState(events)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, err.Error())
+		return err
+	}
+
+	p.Logger.DebugContext(ctx, fmt.Sprintf("endState %+v, assignes %d", taskState, len(taskState.Assigned)))
+
+	if len(taskState.Assigned) == 1 && taskState.Assigned[0] == "" {
+		taskState.Assigned = models.FlexibleStringArray([]string{
+			"Unassigned",
+		})
+	}
+
+	p.Logger.DebugContext(ctx, fmt.Sprintf("endState %+v", taskState))
+
+	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "edit_card.html"))
+
+	users, err := p.UsersHTML(ctx)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, err.Error())
+		return err
+	}
+
+	users = slices.DeleteFunc(users, func(u UsersHTML) bool {
+		return slices.Contains(taskState.Assigned, u.Name)
+	})
+
+	if !slices.ContainsFunc(taskState.Assigned, func(u string) bool {
+		return u == "Unassigned"
+	}) {
+		users = append(users, UsersHTML{
+			Name: "Unassigned",
+		})
+
+	}
+
+	var buffer bytes.Buffer
+
+	err = tmpl.Execute(&buffer, map[string]any{
+		"Title":        taskState.Title,
+		"Description":  taskState.Description,
+		"TaskID":       taskState.TaskID,
+		"Users":        users,
+		"SelectedUser": taskState.Assigned,
+	})
+
+	if err != nil {
+		p.Logger.ErrorContext(ctx, err.Error())
+		return err
+	}
+
+	err = c.WriteMessage(websocket.TextMessage, buffer.Bytes())
+	if err != nil {
+		p.Logger.ErrorContext(ctx, err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func (p *Project) handlEvent(ctx context.Context, te models.TaskEvent, projectID string) error {
@@ -297,6 +342,12 @@ func parseEdit(b []byte) (*models.TaskEventRequest, error) {
 
 	if err := json.Unmarshal(b, &event); err != nil {
 		return nil, err
+	}
+
+	if slices.ContainsFunc(event.Assigned, func(u string) bool {
+		return u == "Unassigned"
+	}) && len(event.Assigned) > 1 {
+		return nil, fmt.Errorf("can not unassign and put another person also %+v", event.Assigned)
 	}
 
 	return &models.TaskEventRequest{

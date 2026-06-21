@@ -19,12 +19,19 @@
       </select>
 
 
-      <label>Assignee</label>
-      <select name="assignees">
-        <option value="">Unassigned</option>
-        <option value="user1">User One</option>
-        <option value="user2">User Two</option>
-      </select>
+      <div class="select-container">
+        <label>Assignee</label>
+        <select name="assignees" multiple>
+          {{range .SelectedUser}}
+          <option value="{{ . }}" style="background-color:#5d8aa8 ; color: black;font-weight: bold;" selected>
+            <div>{{ . }}</div>
+          </option>
+          {{end}}
+          {{range .Users}}
+          <option value="{{ .Name }}">{{ .Name }}</option>
+          {{end}}
+        </select>
+      </div>
       <label>Description</label>
       <textarea name="description" rows="2" placeholder="{{ .Description }}"></textarea>
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/RobMil91/free-orgx/internal/models"
@@ -109,7 +110,7 @@ func (s *SQLiteAdapter) GetAllProjects(ctx context.Context) ([]models.Project, e
 // GetEvents implements [ports.EventStore].
 func (s *SQLiteAdapter) GetEvents(ctx context.Context, project_id string) ([]models.TaskEvent, error) {
 	rows, err := s.Conn.QueryContext(ctx,
-		`SELECT id,event_type,created_at,deadline,user,title,description,status,project_id,task_id 
+		`SELECT id,event_type,created_at,deadline,user,title,description,status,project_id,task_id,assigned 
 	FROM task_events
 	WHERE project_id = ?`, project_id)
 	if err != nil {
@@ -122,6 +123,7 @@ func (s *SQLiteAdapter) GetEvents(ctx context.Context, project_id string) ([]mod
 
 	for rows.Next() {
 		e := models.TaskEvent{}
+		commaList := ""
 		err := rows.Scan(
 			&e.EventID,
 			&e.TaskEventRequest.Type,
@@ -133,10 +135,14 @@ func (s *SQLiteAdapter) GetEvents(ctx context.Context, project_id string) ([]mod
 			&e.Status,
 			&e.ProjectID,
 			&e.TaskEventRequest.TaskID,
+			&commaList,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get event [%w]", err)
 		}
+
+		assgined := strings.Split(commaList, ",")
+		e.Assigned = models.FlexibleStringArray(assgined)
 
 		events = append(events, e)
 	}
@@ -159,7 +165,6 @@ func (s *SQLiteAdapter) NewEvent(
 	created := time.Now().Format(time.RFC3339)
 
 	if t.TaskID == "" && t.Type == "create" {
-
 		createTaskID, err := createRandStr(16)
 		if err != nil {
 			slog.Error(fmt.Sprintf("could not generate project id: %v", err))
@@ -170,7 +175,7 @@ func (s *SQLiteAdapter) NewEvent(
 	}
 
 	stmt, err := s.Conn.Prepare(
-		`INSERT INTO task_events (id,event_type,created_at,deadline,user,title,description,status,project_id,task_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		`INSERT INTO task_events (id,event_type,created_at,deadline,user,title,description,status,project_id,task_id,assigned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not prepare project insert: %v", err))
 		return nil, ports.DatabaseError
@@ -181,7 +186,15 @@ func (s *SQLiteAdapter) NewEvent(
 		*id,
 		t.Type,
 		created,
-		t.Deadline, t.User, t.Title, t.Description, t.Status, project_id, t.TaskID)
+		t.Deadline,
+		t.User,
+		t.Title,
+		t.Description,
+		t.Status,
+		project_id,
+		t.TaskID,
+		strings.Join(t.Assigned, ","),
+	)
 	if err != nil {
 		slog.Error(fmt.Sprintf("could not create project: %v", err))
 		return nil, ports.DatabaseError
@@ -334,6 +347,7 @@ func (s *SQLiteAdapter) CreateTables() error {
 		status TEXT NOT NULL,
 		project_id TEXT NOT NULL,
 		task_id TEXT,
+		assigned TEXT NOT NULL,
 
 		FOREIGN KEY (project_id) REFERENCES projects(id)
 	);`

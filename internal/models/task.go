@@ -1,15 +1,46 @@
 package models
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
 
 type NewTask struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Deadline    string `json:"deadline"`
-	Status      string `json:"status"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	Deadline    string              `json:"deadline"`
+	Status      string              `json:"status"`
+	Assigned    FlexibleStringArray `json:"assignees"`
+}
+
+type FlexibleStringArray []string
+
+func (f *FlexibleStringArray) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*f = []string{s}
+		return nil
+	}
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err == nil {
+		*f = arr
+		return nil
+	}
+	return errors.New("expected string or array of strings")
+}
+
+func CreateRandStr(length int) (*string, error) {
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+	randStr := base64.URLEncoding.EncodeToString(b)
+	return &randStr, nil
 }
 
 type EditTask struct {
@@ -93,10 +124,15 @@ type Updated struct {
 	Deadline    bool
 	Title       bool
 	Description bool
+	User        bool
 }
 
 func (u Updated) Changed() bool {
 	if u.Status {
+		return true
+	}
+
+	if u.User {
 		return true
 	}
 
@@ -135,11 +171,15 @@ func Diff(o, n NewTask) (Updated, NewTask) {
 		u.Description = true
 	}
 
+	if len(n.Assigned) != 0 {
+		result.Assigned = n.Assigned
+		u.User = true
+	}
+
 	return u, result
 }
 
 func FilterTaskEvents(events []TaskEvent, taskID string) []TaskEvent {
-
 	var rowEvents []TaskEvent
 
 	for _, e := range events {

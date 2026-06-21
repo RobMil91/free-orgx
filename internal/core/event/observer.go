@@ -87,9 +87,11 @@ func NewTaskObserver(
 
 	s ports.Sender,
 
+	websockID string,
 ) (*TaskObserver, error) {
 
 	newObserver := TaskObserver{
+		ID:               websockID,
 		Logger:           l,
 		ProjectID:        pID,
 		EventTranslators: ev,
@@ -136,7 +138,6 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 		}
 
 	case "create":
-
 		msg, err := o.EventTranslators.CreateEventAndRow(ctx, t)
 		if err != nil {
 			return err
