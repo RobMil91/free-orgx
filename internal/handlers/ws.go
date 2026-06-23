@@ -174,7 +174,6 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 			// it just direct back command, sort them later, it is currently not added to db
 		case "edit":
-
 			taskCardID, err := parseTaskID(msg)
 			if err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())

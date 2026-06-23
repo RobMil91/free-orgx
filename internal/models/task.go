@@ -171,7 +171,7 @@ func Diff(o, n NewTask) (Updated, NewTask) {
 		u.Description = true
 	}
 
-	if len(n.Assigned) != 0 {
+	if len(n.Assigned) != 0 && n.Assigned[0] != "" {
 		result.Assigned = n.Assigned
 		u.User = true
 	}
