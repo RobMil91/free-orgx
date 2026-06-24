@@ -235,6 +235,22 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 			continue
 
+		case "get-create-card":
+			users, err := p.UsersHTML(r.Context())
+			if err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			if err := sendTemplate(p.TemplatePath+"create_card.html", map[string]any{
+				"Users": users,
+			}, conn); err != nil {
+				p.Logger.ErrorContext(r.Context(), err.Error())
+				continue
+			}
+
+			continue
+
 		}
 	}
 }
@@ -285,7 +301,6 @@ func (p *Project) handleEdit(ctx context.Context, projectID, taskCardID string, 
 		users = append(users, UsersHTML{
 			Name: "Unassigned",
 		})
-
 	}
 
 	var buffer bytes.Buffer
@@ -363,6 +378,24 @@ func parseTaskID(b []byte) (*string, error) {
 	}
 
 	return &event.ID, nil
+}
+
+func sendTemplate(templatePath string, values map[string]any, c *websocket.Conn) error {
+	tmpl := template.Must(template.ParseFiles(templatePath))
+	var buffer bytes.Buffer
+
+	err := tmpl.Execute(&buffer, values)
+
+	if err != nil {
+		return err
+	}
+
+	err = c.WriteMessage(websocket.TextMessage, buffer.Bytes())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // func createRandStr(length int) (*string, error) {
