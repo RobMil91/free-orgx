@@ -385,7 +385,6 @@ func sendTemplate(templatePath string, values map[string]any, c *websocket.Conn)
 	var buffer bytes.Buffer
 
 	err := tmpl.Execute(&buffer, values)
-
 	if err != nil {
 		return err
 	}
@@ -397,13 +396,3 @@ func sendTemplate(templatePath string, values map[string]any, c *websocket.Conn)
 
 	return nil
 }
-
-// func createRandStr(length int) (*string, error) {
-// 	b := make([]byte, length)
-// 	_, err := rand.Read(b)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	randStr := base64.URLEncoding.EncodeToString(b)
-// 	return &randStr, nil
-// }
