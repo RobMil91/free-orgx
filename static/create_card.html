@@ -1,46 +1,35 @@
-<div class="panel editor-panel" id="taskEditor" hx-swap-oob="outerHTML">
+{{ define "createCard" }}
+<div id="taskEditor" class="panel editor-panel" hx-swap-oob="outerHTML">
   <div class="panel-header">
-    <h3>Edit {{ .Title }}</h3>
-
-
-    <button type="button" hx-vals='{"event-type": "get-create-card"}' ws-send>Create</button>
+    <h3>Configuration</h3>
   </div>
   <div class="panel-content">
 
     <form id="taskForm">
       <label>Title</label>
+      <input name="title" type="text" placeholder="e.g. Memory leak investigation">
 
-      <input name="title" type="text" placeholder="{{ .Title }}">
       <label>Status</label>
       <select name="status">
-        <!-- todo: select opt to push  -->
         <option selected="">Todo</option>
         <!-- <option>Blocking</option> -->
         <option>In Progress</option>
         <option>Validation</option>
         <option>Live</option>
       </select>
-
-
       <div class="select-container">
         <label>Assignee</label>
         <select name="assignees" multiple>
-          {{range .SelectedUser}}
-          <option value="{{ . }}" style="background-color:#5d8aa8 ; color: black;font-weight: bold;" selected>
-            <div>{{ . }}</div>
-          </option>
-          {{end}}
+          <option value="">Unassigned</option>
           {{range .Users}}
           <option value="{{ .Name }}">{{ .Name }}</option>
           {{end}}
         </select>
       </div>
-      <input type="hidden" id="event-type" name="event-type" value="edit-event">
 
-      <!-- this is the row id  for one task -->
-      <input type="hidden" name="taskID" value="{{ .TaskID }}">
-
+      <input type="hidden" id="event-type" name="event-type" value="create">
       <button id="taskForm" type="button" ws-send>Update Coordinate State</button>
   </div>
   </form>
 </div>
+{{ end }}

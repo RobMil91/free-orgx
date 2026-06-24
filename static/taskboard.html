@@ -41,46 +41,7 @@
     </div>
 
     <div class="dashboard-row">
-
-      <div id="taskEditor" class="panel editor-panel">
-        <div class="panel-header">
-          <h3>Configuration</h3>
-        </div>
-        <div class="panel-content">
-
-          <form id="taskForm">
-            <label>Title</label>
-            <input name="title" type="text" placeholder="e.g. Memory leak investigation">
-
-            <label>Status</label>
-            <select name="status">
-              <option selected="">Todo</option>
-              <!-- <option>Blocking</option> -->
-              <option>In Progress</option>
-              <option>Validation</option>
-              <option>Live</option>
-            </select>
-
-
-
-            <div class="select-container">
-              <label>Assignee</label>
-              <select name="assignees" multiple>
-                <option value="">Unassigned</option>
-                {{range .Users}}
-                <option value="{{ .Name }}">{{ .Name }}</option>
-                {{end}}
-              </select>
-            </div>
-            <label>Description</label>
-            <textarea name="description" rows="2" placeholder="Describe blockers or context..."></textarea>
-
-            <input type="hidden" id="event-type" name="event-type" value="create">
-
-            <button id="taskForm" type="button" ws-send>Update Coordinate State</button>
-        </div>
-        </form>
-      </div>
+      {{ template "createCard" . }}
 
       <div class="panel people-panel">
         <div class="panel-header">
@@ -103,27 +64,7 @@
           {{else}}
           <div> sth really broken</div>
           {{end}}
-          <!-- <div class="person-item selected"> -->
-          <!--   <div class="avatar">JS</div> -->
-          <!--   <div class="info"> -->
-          <!--     <div style="font-size:0.75rem; font-weight:700">John Smith</div> -->
-          <!--   </div> -->
-          <!--   <div class="status-dot" style="background: var(--success)"></div> -->
         </div>
-        <!-- <div class="person-item"> -->
-        <!--   <div class="avatar" style="background:#db2777">AL</div> -->
-        <!--   <div class="info"> -->
-        <!--     <div style="font-size:0.75rem; font-weight:700">Alice Lee</div> -->
-        <!--   </div> -->
-        <!--   <div class="status-dot" style="background: var(--success)"></div> -->
-        <!-- </div> -->
-        <!-- <div class="person-item"> -->
-        <!--   <div class="avatar" style="background:#d97706">SC</div> -->
-        <!--   <div class="info"> -->
-        <!--     <div style="font-size:0.75rem; font-weight:700">Sam Chen</div> -->
-        <!--   </div> -->
-        <!--   <div class="status-dot" style="background: var(--danger)"></div> -->
-        <!-- </div> -->
       </div>
     </div>
 
