@@ -257,8 +257,10 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//get the create html
-
-	tmpl := template.Must(template.ParseFiles(p.TemplatePath+"taskboard.html", p.TemplatePath+"create_card.html"))
+	tmpl := template.Must(template.ParseFiles(
+		p.TemplatePath+"taskboard.html",
+		p.TemplatePath+"create_card.html",
+	))
 
 	err = tmpl.Execute(w, data)
 	if err != nil {

@@ -242,7 +242,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			if err := sendTemplate(p.TemplatePath+"create_card.html", map[string]any{
+			if err := sendTemplate(p.TemplatePath+"load_create.html", p.TemplatePath+"create_card.html", map[string]any{
 				"Users": users,
 			}, conn); err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
@@ -380,8 +380,9 @@ func parseTaskID(b []byte) (*string, error) {
 	return &event.ID, nil
 }
 
-func sendTemplate(templatePath string, values map[string]any, c *websocket.Conn) error {
-	tmpl := template.Must(template.ParseFiles(templatePath))
+// sendTemplate loads a usage of a definition
+func sendTemplate(loaderPath, definedPath string, values map[string]any, c *websocket.Conn) error {
+	tmpl := template.Must(template.ParseFiles(loaderPath, definedPath))
 	var buffer bytes.Buffer
 
 	err := tmpl.Execute(&buffer, values)
