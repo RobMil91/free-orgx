@@ -19,6 +19,7 @@
         <option>In Progress</option>
         <option>Validation</option>
         <option>Live</option>
+        <option>Archieved</option>
       </select>
 
 
@@ -44,6 +45,7 @@
       <input type="hidden" name="taskID" value="{{ .TaskID }}">
 
       <button id="taskForm" type="button" ws-send>Update Coordinate State</button>
+      <!-- <button type="button" hx-vals='{"taskID": "${taskID}", "event-type": "delete-event"}' ws-send>Remove</button> -->
   </div>
   </form>
 </div>
