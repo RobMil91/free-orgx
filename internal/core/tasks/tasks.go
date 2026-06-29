@@ -158,6 +158,7 @@ func (t *TaskBoard) rowHTML(ctx context.Context, e models.TaskEvent) ([]byte, er
 
 	err = tmpl.Execute(&buffer, map[string]string{
 		"RowNumber": *rowNumber,
+		"ID":        e.TaskID,
 	})
 
 	if err != nil {
