@@ -303,15 +303,22 @@ func (p *Project) handleEdit(ctx context.Context, projectID, taskCardID string, 
 		})
 	}
 
+	layout := "2006-01-02T15:04"
 	var buffer bytes.Buffer
 
-	err = tmpl.Execute(&buffer, map[string]any{
+	vals := map[string]any{
 		"Title":        taskState.Title,
 		"Description":  taskState.Description,
 		"TaskID":       taskState.TaskID,
 		"Users":        users,
 		"SelectedUser": taskState.Assigned,
-	})
+	}
+
+	if taskState.Deadline != nil {
+		vals["Time"] = taskState.Deadline.Format(layout)
+	}
+
+	err = tmpl.Execute(&buffer, vals)
 
 	if err != nil {
 		p.Logger.ErrorContext(ctx, err.Error())

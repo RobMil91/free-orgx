@@ -12,7 +12,7 @@ import (
 type NewTask struct {
 	Title       string              `json:"title"`
 	Description string              `json:"description"`
-	Deadline    string              `json:"deadline"`
+	Deadline    *time.Time          `json:"deadline"`
 	Status      string              `json:"status"`
 	Assigned    FlexibleStringArray `json:"assignees"`
 }
@@ -161,7 +161,7 @@ func Diff(o, n NewTask) (Updated, NewTask) {
 		u.Title = true
 	}
 
-	if n.Deadline != "" {
+	if n.Deadline != nil {
 		result.Deadline = n.Deadline
 		u.Deadline = true
 	}

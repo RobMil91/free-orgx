@@ -13,9 +13,7 @@
       <input name="title" type="text" placeholder="{{ .Title }}">
       <label>Status</label>
       <select name="status">
-        <!-- todo: select opt to push  -->
         <option selected="">Todo</option>
-        <!-- <option>Blocking</option> -->
         <option>In Progress</option>
         <option>Validation</option>
         <option>Live</option>
@@ -36,7 +34,7 @@
         </select>
       </div>
       <label>Deadline</label>
-      <input name="deadline" type="datetime-local">
+      <input name="deadline" type="datetime-local" value="{{ .Time }}">
 
       <input type="hidden" id="event-type" name="event-type" value="edit-event">
 
