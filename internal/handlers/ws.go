@@ -362,7 +362,7 @@ func parseEdit(b []byte) (*models.TaskEventRequest, error) {
 	var event models.EditTask
 
 	if err := json.Unmarshal(b, &event); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed parsing event %s %w", string(b), err)
 	}
 
 	if slices.ContainsFunc(event.Assigned, func(u string) bool {
