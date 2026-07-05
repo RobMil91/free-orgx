@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -128,9 +129,13 @@ func (p *Project) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f(w, r)
 }
 
-func LoginHandler(l *slog.Logger) func(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(l *slog.Logger, fs fs.FS) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl := template.Must(template.ParseFiles(htmxPath + "login.html"))
+		tmpl, err := template.ParseFS(fs, "login.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		tmpl.Execute(w, nil)
 	}
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
@@ -13,11 +15,18 @@ import (
 	"github.com/RobMil91/free-orgx/internal/setup"
 )
 
+//go:embed static/*
+var staticContent embed.FS
+
 const (
 	htmxPath = "static/"
 )
 
 func main() {
+	staticFS, err := fs.Sub(staticContent, "static")
+	if err != nil {
+		panic(err)
+	}
 	cfg := config.Config{}
 
 	port := flag.String("port", "8080", "Port to listen on")
@@ -78,13 +87,13 @@ func main() {
 		mux.Handle(k, handler)
 	}
 
-	mux.HandleFunc("/login", handlers.LoginHandler(logger))
+	mux.HandleFunc("/login", handlers.LoginHandler(logger, staticFS))
 	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
 	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
 	mux.HandleFunc("/admin/user/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
 
-	mux.Handle("/", http.FileServer(http.Dir("./static")))
+	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	portStr := fmt.Sprintf(":%s", cfg.Port)
 	logger.Info("started free orgx on port" + portStr)
