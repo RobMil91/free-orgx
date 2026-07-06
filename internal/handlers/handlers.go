@@ -17,12 +17,11 @@ import (
 
 const (
 	SessionCookieID = "session_id"
-	htmxPath        = "static/"
 )
 
 type Project struct {
-	TemplatePath string
-	Logger       *slog.Logger
+	Files  fs.FS
+	Logger *slog.Logger
 
 	UserRepo    ports.UserRepo
 	ProjectRepo ports.ProjectRepo
@@ -37,7 +36,7 @@ type Project struct {
 	EndpointMapping map[string]func(w http.ResponseWriter, r *http.Request)
 }
 
-func NewProjectHandler(path string,
+func NewProjectHandler(files fs.FS,
 	l *slog.Logger,
 	u ports.UserRepo,
 	p ports.ProjectRepo,
@@ -47,11 +46,11 @@ func NewProjectHandler(path string,
 	endpoints map[string]func(w http.ResponseWriter, r *http.Request)) (*Project, error) {
 
 	return &Project{
-		TemplatePath: path,
-		Logger:       l,
-		UserRepo:     u,
-		ProjectRepo:  p,
-		TasksRepo:    t,
+		Files:       files,
+		Logger:      l,
+		UserRepo:    u,
+		ProjectRepo: p,
+		TasksRepo:   t,
 
 		EventTranslator: ev,
 		EventsRepo:      e,
@@ -91,8 +90,12 @@ func (p *Project) HandleGetProjects(w http.ResponseWriter, r *http.Request) {
 
 	p.Logger.DebugContext(r.Context(), "show project")
 
-	template := template.Must(template.ParseFiles(htmxPath + "project.html"))
-	template.Execute(w, struct {
+	tmpl, err := template.ParseFS(p.Files, "project.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, struct {
 		Username string
 		Projects []models.Project
 		IsAdmin  bool
@@ -127,81 +130,6 @@ func (p *Project) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	f(w, r)
-}
-
-func LoginHandler(l *slog.Logger, fs fs.FS) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFS(fs, "login.html")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tmpl.Execute(w, nil)
-	}
-}
-
-func LogoutHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached logout handler")
-
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			http.Error(w, err.Error(), 401)
-			return
-		}
-
-		user, err := db.IsValid(r.Context(), c.Value)
-		if err != nil {
-			http.Error(w, err.Error(), 403)
-			return
-		}
-
-		if err := db.Logout(r.Context(), user.Name); err != nil {
-			l.Error("logout failed", "error", err)
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:   SessionCookieID,
-			Value:  "",
-			MaxAge: -1,
-		})
-
-		http.Redirect(w, r, "/", http.StatusFound)
-	}
-}
-
-func ProjectHandler(l *slog.Logger, db ports.UserRepo, projectRepo ports.ProjectRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
-
-		user, err := db.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
-
-		projects, err := projectRepo.GetProjectsByOwner(r.Context(), user.Name)
-		if err != nil {
-			l.Error("failed to get projects", "error", err)
-		}
-
-		tmpl := template.Must(template.ParseFiles(htmxPath + "project.html"))
-		tmpl.Execute(w, struct {
-			Username string
-			Projects []models.Project
-			IsAdmin  bool
-		}{
-			Username: user.Name,
-			Projects: projects,
-			IsAdmin:  user.Role == ports.RoleAdmin,
-		})
-	}
 }
 
 func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
@@ -261,11 +189,12 @@ func (p *Project) ProjectTasksHandler(w http.ResponseWriter, r *http.Request) {
 		data["Tasks"] = nil
 	}
 
-	//get the create html
-	tmpl := template.Must(template.ParseFiles(
-		p.TemplatePath+"taskboard.html",
-		p.TemplatePath+"create_card.html",
-	))
+	tmpl, err := template.ParseFS(p.Files, "taskboard.html", "create_card.html")
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, "could locad: templates", http.StatusInternalServerError)
+		return
+	}
 
 	err = tmpl.Execute(w, data)
 	if err != nil {
@@ -316,7 +245,12 @@ func (p *Project) CreateTaskForm(w http.ResponseWriter, r *http.Request) {
 		"ID": id,
 	}
 
-	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "create_task.html"))
+	tmpl, err := template.ParseFS(p.Files, "create_task.html")
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+		http.Error(w, "could not load templates", http.StatusInternalServerError)
+		return
+	}
 
 	err = tmpl.Execute(w, data)
 	if err != nil {
@@ -331,35 +265,6 @@ func LoginSubmit(
 	db ports.UserRepo,
 ) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl := template.Must(template.ParseFiles(htmxPath + "loginSuccessCard.html"))
-		result, err := db.GetUserToken(r.Context(), r.FormValue("user"), r.FormValue("password"))
-		if err != nil {
-
-			tmpl.Execute(w, struct {
-				Result string
-			}{
-				Result: "failed",
-			})
-			return
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     SessionCookieID,
-			Value:    result.Cookie.Value,
-			HttpOnly: true,
-			Path:     "/",
-		})
-
-		if result.IsNewUser {
-			l.Info(fmt.Sprintf("first admin registered: %s", result.User.Name))
-			return
-		}
-
-		tmpl.Execute(w, struct {
-			Result string
-		}{
-			Result: "Success",
-		})
 
 	}
 }
@@ -386,7 +291,13 @@ func (p *Project) CreateProjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles(htmxPath + "proj.html"))
+	tmpl, err := template.ParseFS(p.Files, "proj.html")
+	if err != nil {
+		p.Logger.ErrorContext(r.Context(), err.Error())
+
+		return
+	}
+
 	tmpl.Execute(w, struct {
 		ID   string
 		Name string
@@ -412,96 +323,5 @@ func (p *Project) DeleteProjectHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.Logger.Error("failed to create project", "error", err, "user", user.Name)
 		return
-	}
-}
-
-func AdminUsersHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached admin users handler")
-
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
-
-		user, err := db.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
-
-		if user.Role != ports.RoleAdmin {
-			w.Write([]byte("Access denied: admin only"))
-			return
-		}
-
-		users, err := db.GetAll(r.Context())
-		if err != nil {
-			l.Error("failed to get users", "error", err)
-			users = []ports.User{}
-		}
-
-		tmpl := template.Must(template.ParseFiles(htmxPath + "admin_users.html"))
-		tmpl.Execute(w, struct {
-			Users []ports.User
-		}{
-			Users: users,
-		})
-	}
-}
-
-func AdminCreateUserHandler(l *slog.Logger, db ports.UserRepo) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		l.Debug("reached admin create user handler")
-
-		c, err := r.Cookie(SessionCookieID)
-		if err != nil {
-			w.Write([]byte("Please login first"))
-			return
-		}
-
-		user, err := db.IsValid(r.Context(), c.Value)
-		if err != nil {
-			w.Write([]byte("Session invalid, please login again"))
-			return
-		}
-
-		if user.Role != ports.RoleAdmin {
-			w.Write([]byte("Access denied: admin only"))
-			return
-		}
-
-		username := r.FormValue("username")
-		password := r.FormValue("password")
-
-		if username == "" || password == "" {
-			w.Write([]byte("Username and password are required"))
-			return
-		}
-
-		err = db.Create(r.Context(), username, password, ports.RoleUser)
-		if err != nil {
-			l.Error("failed to create user", "error", err)
-			w.Write([]byte(fmt.Sprintf("Failed to create user: %s", err.Error())))
-			return
-		}
-
-		l.Info(fmt.Sprintf("admin %s created user %s", user.Name, username))
-
-		users, err := db.GetAll(r.Context())
-
-		if err != nil {
-			l.Error("failed to create user list", "error", err)
-			return
-		}
-
-		tmpl := template.Must(template.ParseFiles(htmxPath + "userList.html"))
-		tmpl.Execute(w, struct {
-			Users []ports.User
-		}{
-			Users: users,
-		})
-
 	}
 }

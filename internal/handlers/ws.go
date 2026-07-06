@@ -242,7 +242,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			if err := sendTemplate(p.TemplatePath+"load_create.html", p.TemplatePath+"create_card.html", map[string]any{
+			if err := p.sendTemplate("load_create.html", "create_card.html", map[string]any{
 				"Users": users,
 			}, conn); err != nil {
 				p.Logger.ErrorContext(r.Context(), err.Error())
@@ -283,7 +283,11 @@ func (p *Project) handleEdit(ctx context.Context, projectID, taskCardID string, 
 
 	p.Logger.DebugContext(ctx, fmt.Sprintf("endState %+v", taskState))
 
-	tmpl := template.Must(template.ParseFiles(p.TemplatePath + "edit_card.html"))
+	tmpl, err := template.ParseFS(p.Files, "edit_card.html")
+	if err != nil {
+		p.Logger.ErrorContext(ctx, err.Error())
+		return err
+	}
 
 	users, err := p.UsersHTML(ctx)
 	if err != nil {
@@ -381,11 +385,15 @@ func parseTaskID(b []byte) (*string, error) {
 }
 
 // sendTemplate loads a usage of a definition
-func sendTemplate(loaderPath, definedPath string, values map[string]any, c *websocket.Conn) error {
-	tmpl := template.Must(template.ParseFiles(loaderPath, definedPath))
+func (p *Project) sendTemplate(loaderPath, definedPath string,
+	values map[string]any, c *websocket.Conn) error {
+	tmpl, err := template.ParseFS(p.Files, loaderPath, definedPath)
+	if err != nil {
+		return err
+	}
 	var buffer bytes.Buffer
 
-	err := tmpl.Execute(&buffer, values)
+	err = tmpl.Execute(&buffer, values)
 	if err != nil {
 		return err
 	}

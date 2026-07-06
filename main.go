@@ -18,10 +18,6 @@ import (
 //go:embed static/*
 var staticContent embed.FS
 
-const (
-	htmxPath = "static/"
-)
-
 func main() {
 	staticFS, err := fs.Sub(staticContent, "static")
 	if err != nil {
@@ -57,7 +53,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	handler, err := handlers.NewProjectHandler(htmxPath,
+	projectHandler, err := handlers.NewProjectHandler(
+		staticFS,
 		logger,
 		adapters.UserRep,
 		adapters.ProjectRep,
@@ -72,26 +69,28 @@ func main() {
 		panic(err)
 	}
 
-	handler.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
-		"/project":             handler.HandleGetProjects,
-		"/project/create":      handler.CreateProjectHandler,
-		"/project/delete/{id}": handler.DeleteProjectHandler,
+	userHandler := handlers.NewUserHandler(staticFS, logger, adapters.UserRep)
 
-		"/projects/{id}/tasks":        handler.ProjectTasksHandler,
-		"/projects/{id}/tasks/create": handler.CreateTaskForm,
+	projectHandler.EndpointMapping = map[string]func(w http.ResponseWriter, r *http.Request){
+		"/project":             projectHandler.HandleGetProjects,
+		"/project/create":      projectHandler.CreateProjectHandler,
+		"/project/delete/{id}": projectHandler.DeleteProjectHandler,
 
-		"/projects/{id}/ws": handler.WebsocketHandler,
+		"/projects/{id}/tasks":        projectHandler.ProjectTasksHandler,
+		"/projects/{id}/tasks/create": projectHandler.CreateTaskForm,
+
+		"/projects/{id}/ws": projectHandler.WebsocketHandler,
+
+		"/login":             userHandler.Login,
+		"/submit":            userHandler.Submit,
+		"/users":             userHandler.AdminUsersPage,
+		"/admin/user/create": userHandler.AdminCreateUser,
+		"/logout":            userHandler.Logout,
 	}
 
-	for k := range handler.EndpointMapping {
-		mux.Handle(k, handler)
+	for k := range projectHandler.EndpointMapping {
+		mux.Handle(k, projectHandler)
 	}
-
-	mux.HandleFunc("/login", handlers.LoginHandler(logger, staticFS))
-	mux.HandleFunc("/submit", handlers.LoginSubmit(logger, adapters.UserRep))
-	mux.HandleFunc("/logout", handlers.LogoutHandler(logger, adapters.UserRep))
-	mux.HandleFunc("/users", handlers.AdminUsersHandler(logger, adapters.UserRep))
-	mux.HandleFunc("/admin/user/create", handlers.AdminCreateUserHandler(logger, adapters.UserRep))
 
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
