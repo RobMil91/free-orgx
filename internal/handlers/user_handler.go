@@ -42,7 +42,6 @@ func (u UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, nil)
 }
 
 func (u UserHandler) Submit(w http.ResponseWriter, r *http.Request) {
