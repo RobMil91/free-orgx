@@ -1,14 +1,12 @@
 # Minimalist Orga Tool
 
-A lightweight, self-contained organization tool built for speed, simplicity, and zero cloud reliance. Everything runs from a **single binary** with zero external network dependencies, making it perfect for hosting locally on lightweight hardware like a **Raspberry Pi**.
+A lightweight, self-contained organization tool built for speed, simplicity, and zero internet reliance. Everything runs from a **single binary** with zero external network dependencies, making it perfect for hosting locally on lightweight hardware like a **Raspberry Pi**.
 
 ---
 
 ## About the Project
 
-This started as an experimental playground to explore the **htmx Observer Pattern**—letting server-driven events dynamically update UI components without heavy JavaScript frameworks or complex client-side state management.
-
-It turned out to be genuinely useful for daily organization tasks! It provides a fully functional, privacy-first alternative to heavy, cloud-dependent productivity tools.
+This started as a fun experimental playground to explore the **htmx** and server-driven events dynamically update UI components without heavy JavaScript frameworks or complex client-side state management.
 
 ---
 
@@ -32,6 +30,14 @@ It turned out to be genuinely useful for daily organization tasks! It provides a
 ---
 
 ## Quick Start
+
+git clone 
+
+exports
+
+go run main.go
+
+go build needs special flags for c because of  SQLite dependency
 
 ### Prerequisites
 
