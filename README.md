@@ -38,7 +38,12 @@ exports
 go run main.go
 
 go build needs special flags for c because of  SQLite dependency
+
+Raspberry pi:
 CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o orga
+
+wsl:
+CGO_ENABLED=1 GOOS=linux  go build -o orga 
 
 ### Prerequisites
 
