@@ -38,6 +38,7 @@ exports
 go run main.go
 
 go build needs special flags for c because of  SQLite dependency
+CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o orga
 
 ### Prerequisites
 
