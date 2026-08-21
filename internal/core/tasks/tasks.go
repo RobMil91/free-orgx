@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/fs"
 	"strconv"
 	"text/template"
 
@@ -15,14 +16,13 @@ var _ ports.EventTranslator = (*TaskBoard)(nil)
 
 type TaskBoard struct {
 	Events ports.EventStore
-
-	TemplatePath string
+	Files  fs.FS
 }
 
-func NewTaskBoard(e ports.EventStore, p string) *TaskBoard {
+func NewTaskBoard(e ports.EventStore, f fs.FS) *TaskBoard {
 	return &TaskBoard{
-		TemplatePath: p,
-		Events:       e,
+		Files:  f,
+		Events: e,
 	}
 }
 
@@ -147,7 +147,10 @@ func (t *TaskBoard) CreateRowEvent(ctx context.Context, e models.TaskEvent) ([]b
 }
 
 func (t *TaskBoard) rowHTML(ctx context.Context, e models.TaskEvent) ([]byte, error) {
-	tmpl := template.Must(template.ParseFiles(t.TemplatePath + "empty_row.html"))
+	tmpl, err := template.ParseFS(t.Files, "empty_row.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file empty row %w", err)
+	}
 
 	var buffer bytes.Buffer
 
@@ -242,11 +245,14 @@ func (t *TaskBoard) getLastTaskStatus(ctx context.Context, e models.TaskEvent) (
 }
 
 func (t *TaskBoard) updateRowCard(ctx context.Context, i models.CardInput) ([]byte, error) {
-	tmpl := template.Must(template.ParseFiles(t.TemplatePath + "card.html"))
+	tmpl, err := template.ParseFS(t.Files, "card.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file empty row %w", err)
+	}
 
 	var buffer2 bytes.Buffer
 
-	err := tmpl.Execute(&buffer2, map[string]string{
+	err = tmpl.Execute(&buffer2, map[string]string{
 		"Title":        i.Title,
 		"ID":           i.ID,
 		"CardPosition": i.CardPosition,
@@ -262,11 +268,14 @@ func (t *TaskBoard) updateRowCard(ctx context.Context, i models.CardInput) ([]by
 }
 
 func (t *TaskBoard) deleteDiv(ctx context.Context, boardPosition string) ([]byte, error) {
-	tmpl := template.Must(template.ParseFiles(t.TemplatePath + "task_delete.html"))
+	tmpl, err := template.ParseFS(t.Files, "task_delete.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file empty row %w", err)
+	}
 
 	var buffer bytes.Buffer
 
-	err := tmpl.Execute(&buffer, map[string]string{
+	err = tmpl.Execute(&buffer, map[string]string{
 		"BoardPosition": boardPosition,
 	})
 
@@ -278,7 +287,10 @@ func (t *TaskBoard) deleteDiv(ctx context.Context, boardPosition string) ([]byte
 }
 
 func (t *TaskBoard) rowAndCard(ctx context.Context, e models.TaskEvent) ([]byte, error) {
-	tmpl := template.Must(template.ParseFiles(t.TemplatePath + "task_card.html"))
+	tmpl, err := template.ParseFS(t.Files, "task_card.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file empty row %w", err)
+	}
 
 	var buffer bytes.Buffer
 
