@@ -23,7 +23,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cfg := config.Config{}
+	cfg := config.Config{
+		Files: staticFS,
+	}
 
 	port := flag.String("port", "8080", "Port to listen on")
 	decsionDB := flag.Bool("ram", false, "Decide wether to use a ram db or std db")

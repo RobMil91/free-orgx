@@ -54,7 +54,7 @@ func Setup(cfg config.Config) (*Adapters, error) {
 		taskRepo = db
 		eventRepo = db
 
-		evTranslator = tasks.NewTaskBoard(db, "./static/")
+		evTranslator = tasks.NewTaskBoard(db, cfg.Files)
 		// evTranslator = tasks.NewTaskBoard(db, "../../static/")
 
 		slog.Info("started sqlite db (first login becomes admin)")
