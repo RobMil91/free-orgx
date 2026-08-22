@@ -42,8 +42,24 @@ go build needs special flags for c because of  SQLite dependency
 Raspberry pi:
 CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o orga
 
-wsl:
+wsl:/ std linux -> should take the enviroment compiler
 CGO_ENABLED=1 GOOS=linux  go build -o orga 
+
+
+On the PI:
+Disclaimer: you need basic network understanding of ports and ips to do this.
+troubleshoot:
+sudo ss -tulpn | grep :80
+sudo setcap 'cap_net_bind_service=+ep' /path/to/your/binary   
+
+Running it on a pi:
+export PASSWORD_PEPPER=<own-passwd> 
+nohup ./pi_orga -port 80 > orga.log 2>&1 &
+
+test with curl or browser on pi ip:
+ip addr gets that
+you can define port and should create local cert and allow it in your browsers (for https)
+otherwise always go http://<ip>:<port>
 
 ### Prerequisites
 
@@ -59,3 +75,6 @@ export LOG_LEVEL=debug
 
 # Set your secret pepper string used for password hashing
 export PASSWORD_PEPPER="your-super-secret-pepper-string"
+
+known issue:
+first login for admin, end in blank page. sorry. will fix sometime
