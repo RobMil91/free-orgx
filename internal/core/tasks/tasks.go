@@ -115,7 +115,7 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) ([]models
 				},
 			}
 
-			events = append(events, newEvent)
+			events = append(events, newEvent) //this is duplicated in 129... wtf?
 
 			state, event, err := t.getLastTaskStatus(context.Background(), e)
 			if err != nil {
