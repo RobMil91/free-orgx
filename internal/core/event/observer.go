@@ -101,6 +101,7 @@ func NewTaskObserver(
 
 	ctx := context.Background()
 
+	//this is basically the refresh, that should be done from time to time, on the database.
 	messages, err := newObserver.EventTranslators.GetPreviousEvents(ctx, pID)
 	if err != nil {
 		newObserver.Logger.ErrorContext(ctx, err.Error())
@@ -113,6 +114,7 @@ func NewTaskObserver(
 			return nil, err
 		}
 	}
+	//till here
 
 	return &newObserver, nil
 }
@@ -168,7 +170,6 @@ func (o *TaskObserver) update(ctx context.Context, t models.TaskEvent) error {
 				return err
 			}
 		}
-
 	}
 
 	return nil

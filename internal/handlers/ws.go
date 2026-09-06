@@ -121,7 +121,7 @@ func (p *Project) WebsocketHandler(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			err = p.handlEvent(r.Context(), models.TaskEvent{
+			err = p.handleEvent(r.Context(), models.TaskEvent{
 				EventID: *taskCardID,
 				TaskEventRequest: models.TaskEventRequest{
 					Type: "deleteTask",
@@ -331,7 +331,7 @@ func (p *Project) handleEdit(ctx context.Context, projectID, taskCardID string, 
 	return nil
 }
 
-func (p *Project) handlEvent(ctx context.Context, te models.TaskEvent, projectID string) error {
+func (p *Project) handleEvent(ctx context.Context, te models.TaskEvent, projectID string) error {
 	subject, ok := p.TasksSubjects[projectID]
 	if !ok {
 		return fmt.Errorf("no subject project id found, within websocket connection %s", projectID)

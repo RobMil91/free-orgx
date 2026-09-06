@@ -15,14 +15,14 @@ import (
 var _ ports.EventTranslator = (*TaskBoard)(nil)
 
 type TaskBoard struct {
-	Events ports.EventStore
+	Topics ports.EventStore
 	Files  fs.FS
 }
 
 func NewTaskBoard(e ports.EventStore, f fs.FS) *TaskBoard {
 	return &TaskBoard{
 		Files:  f,
-		Events: e,
+		Topics: e,
 	}
 }
 
@@ -100,10 +100,11 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) ([]models
 	// create event plus update to newest state
 	// per row
 
-	previousEvents, err := t.Events.GetEvents(ctx, pID)
+	previousEvents, err := t.Topics.GetEvents(ctx, pID)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, e := range previousEvents {
 		if e.Type == "create" {
 			newEvent := models.TaskEvent{
@@ -126,7 +127,6 @@ func (t *TaskBoard) GetPreviousEvents(ctx context.Context, pID string) ([]models
 			}
 
 			events = append(events, *event)
-
 		}
 	}
 
@@ -172,7 +172,7 @@ func (t *TaskBoard) rowHTML(ctx context.Context, e models.TaskEvent) ([]byte, er
 }
 
 func (t *TaskBoard) rowPosition(ctx context.Context, taskID, projectID string) (*string, error) {
-	events, err := t.Events.GetEvents(ctx, projectID)
+	events, err := t.Topics.GetEvents(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (t *TaskBoard) rowPosition(ctx context.Context, taskID, projectID string) (
 }
 
 func (t *TaskBoard) getLastTaskStatus(ctx context.Context, e models.TaskEvent) (*models.Task, *models.TaskEvent, error) {
-	allEvents, err := t.Events.GetEvents(ctx, e.ProjectID)
+	allEvents, err := t.Topics.GetEvents(ctx, e.ProjectID)
 	if err != nil {
 		return nil, nil, err
 	}
